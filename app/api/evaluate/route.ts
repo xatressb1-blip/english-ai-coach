@@ -1,42 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
-
-export async function GET() {
-
-  try {
-
-    const models =
-      await ai.models.list();
-
-    return Response.json(models);
-
-  } catch (error: any) {
-
-    console.error(error);
-
-    return Response.json(
-      {
-        success: false,
-        message:
-          error.message,
-      },
-      {
-        status: 500,
-      }
-    );
-
-  }
-
-}
-
 export async function POST(request: Request) {
   try {
     const { prompt } = await request.json();
 
-    if (!prompt || !prompt.trim()) {
+    if (!prompt?.trim()) {
       return Response.json(
         {
           success: false,
@@ -51,113 +17,93 @@ export async function POST(request: Request) {
     const evaluationPrompt = `
 You are an English Interview Examiner.
 
-Evaluate the candidate's interview answer.
+Evaluate the following interview answer.
 
 Candidate Answer:
 "${prompt}"
 
-IMPORTANT:
-
 Return ONLY valid JSON.
 
-Do NOT use markdown.
-
-Do NOT explain.
-
-Do NOT add extra text.
-
-The JSON format MUST be:
-
 {
-  "grammar": number,
-  "vocabulary": number,
-  "pronunciation": number,
-  "fluency": number,
-  "relevance": number,
-  "confidence": number,
-  "mistakes": [
-    "..."
-  ],
-  "suggestions": [
-    "..."
-  ],
-  "improvedAnswer": "..."
+  "grammar": 0,
+  "vocabulary": 0,
+  "pronunciation": 0,
+  "fluency": 0,
+  "relevance": 0,
+  "confidence": 0,
+  "mistakes": [],
+  "suggestions": [],
+  "improvedAnswer": ""
 }
-
-Rules:
-
-- Scores are between 0 and 10.
-- mistakes: maximum 3 items.
-- suggestions: maximum 3 items.
-- improvedAnswer:
-  around 40~80 words.
 `;
 
-    const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash-lite",
-  contents: evaluationPrompt,
-});
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
 
-    const rawText = response.text;
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY!,
+        },
 
-    if (!rawText) {
-      throw new Error("Gemini returned empty response.");
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: evaluationPrompt,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(data);
+
+      return Response.json(
+        {
+          success: false,
+          message: data.error?.message ?? "Gemini Error",
+        },
+        {
+          status: 500,
+        }
+      );
     }
 
-    //--------------------------------------------------------
-    // Remove markdown if Gemini returns ```json
-    //--------------------------------------------------------
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    const cleaned = rawText
+    if (!text) {
+      throw new Error("Empty AI response");
+    }
+
+    const cleaned = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
-    //--------------------------------------------------------
-    // Parse JSON
-    //--------------------------------------------------------
-
     const result = JSON.parse(cleaned);
-
-    //--------------------------------------------------------
-    // Validation
-    //--------------------------------------------------------
-
-    const evaluation = {
-      grammar: Number(result.grammar ?? 0),
-      vocabulary: Number(result.vocabulary ?? 0),
-      pronunciation: Number(result.pronunciation ?? 0),
-      fluency: Number(result.fluency ?? 0),
-      relevance: Number(result.relevance ?? 0),
-      confidence: Number(result.confidence ?? 0),
-
-      mistakes: Array.isArray(result.mistakes)
-        ? result.mistakes
-        : [],
-
-      suggestions: Array.isArray(result.suggestions)
-        ? result.suggestions
-        : [],
-
-      improvedAnswer:
-        result.improvedAnswer ?? "",
-    };
 
     return Response.json({
       success: true,
-      result: evaluation,
+      result,
     });
 
   } catch (error: any) {
 
-    console.error("Gemini API Error:", error);
+    console.error(error);
 
     return Response.json(
       {
         success: false,
-        message:
-          error?.message ??
-          "Failed to evaluate interview.",
+        message: error.message,
       },
       {
         status: 500,
