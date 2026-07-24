@@ -73,9 +73,9 @@ Rules:
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: evaluationPrompt,
-    });
+  model: "gemini-2.0-flash",
+  contents: evaluationPrompt,
+});
 
     const rawText = response.text;
 
