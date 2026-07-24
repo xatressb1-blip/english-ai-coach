@@ -16,15 +16,11 @@ import {
 } from "@/services/liveCoachService";
 
 interface LiveCoachContextType {
-
   coach: LiveCoachResult;
-
 }
 
 const LiveCoachContext =
-  createContext<LiveCoachContextType | null>(
-    null
-  );
+  createContext<LiveCoachContextType | null>(null);
 
 export function LiveCoachProvider({
   children,
@@ -32,8 +28,10 @@ export function LiveCoachProvider({
   children: ReactNode;
 }) {
 
-  const { transcript } =
-    useSpeechContext();
+  const {
+    transcript,
+    status,
+  } = useSpeechContext();
 
   const [coach, setCoach] =
     useState<LiveCoachResult>(
@@ -42,58 +40,40 @@ export function LiveCoachProvider({
 
   useEffect(() => {
 
-    const timer =
-      setInterval(() => {
+    // Chỉ phân tích khi đang ghi âm
+    if (status !== "recording") {
+      return;
+    }
 
-        setCoach(
+    setCoach(
+      analyzeLiveTranscript(
+        transcript
+      )
+    );
 
-          analyzeLiveTranscript(
-            transcript
-          )
-
-        );
-
-      }, 2000);
-
-    return () => {
-
-      clearInterval(timer);
-
-    };
-
-  }, [transcript]);
+  }, [transcript, status]);
 
   return (
-
     <LiveCoachContext.Provider
       value={{
         coach,
       }}
     >
-
       {children}
-
     </LiveCoachContext.Provider>
-
   );
-
 }
 
 export function useLiveCoach() {
 
   const context =
-    useContext(
-      LiveCoachContext
-    );
+    useContext(LiveCoachContext);
 
   if (!context) {
-
     throw new Error(
       "useLiveCoach must be used inside LiveCoachProvider."
     );
-
   }
 
   return context;
-
 }
