@@ -5,10 +5,31 @@ const ai = new GoogleGenAI({
 });
 
 export async function GET() {
-  return Response.json({
-    success: true,
-    message: "Gemini API is ready.",
-  });
+
+  try {
+
+    const models =
+      await ai.models.list();
+
+    return Response.json(models);
+
+  } catch (error: any) {
+
+    console.error(error);
+
+    return Response.json(
+      {
+        success: false,
+        message:
+          error.message,
+      },
+      {
+        status: 500,
+      }
+    );
+
+  }
+
 }
 
 export async function POST(request: Request) {
