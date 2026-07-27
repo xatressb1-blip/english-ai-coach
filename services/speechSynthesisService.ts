@@ -6,29 +6,26 @@ const DEFAULT_PITCH = 1;
 
 const DEFAULT_VOLUME = 1;
 
-/**
- * Speak a text using the browser Speech Synthesis API.
- */
+function getEnglishVoice() {
+  const voices = window.speechSynthesis.getVoices();
+
+  return (
+    voices.find(v => v.lang === "en-US") ||
+    voices.find(v => v.lang.startsWith("en")) ||
+    null
+  );
+}
+
 export function speak(
   text: string,
   onEnd?: () => void
 ): void {
 
-  if (typeof window === "undefined") {
-    return;
-  }
+  if (typeof window === "undefined") return;
 
-  if (!text.trim()) {
-    return;
-  }
+  if (!("speechSynthesis" in window)) return;
 
-  if (!("speechSynthesis" in window)) {
-    console.warn("Speech Synthesis is not supported.");
-    return;
-  }
-
-  // Stop any speech currently playing
-  window.speechSynthesis.cancel();
+  if (!text.trim()) return;
 
   const utterance =
     new SpeechSynthesisUtterance(text);
@@ -41,44 +38,41 @@ export function speak(
 
   utterance.volume = DEFAULT_VOLUME;
 
-  utterance.onend = () => {
+  const voice = getEnglishVoice();
 
-    onEnd?.();
+  if (voice) {
+    utterance.voice = voice;
+  }
 
+  utterance.onstart = () => {
+    console.log("🔊 AI started speaking");
   };
 
-  window.speechSynthesis.speak(
-    utterance
-  );
+  utterance.onend = () => {
+    console.log("✅ AI finished speaking");
+    onEnd?.();
+  };
 
+  utterance.onerror = (e) => {
+    console.error("Speech Error:", e);
+    onEnd?.();
+  };
+
+  window.speechSynthesis.speak(utterance);
 }
 
-/**
- * Stop speaking immediately.
- */
 export function stopSpeaking(): void {
 
-  if (typeof window === "undefined") {
-    return;
-  }
+  if (typeof window === "undefined") return;
 
-  if (!("speechSynthesis" in window)) {
-    return;
-  }
+  if (!("speechSynthesis" in window)) return;
 
   window.speechSynthesis.cancel();
-
 }
 
-/**
- * Check browser support.
- */
 export function isSpeechSynthesisSupported(): boolean {
 
-  if (typeof window === "undefined") {
-    return false;
-  }
+  if (typeof window === "undefined") return false;
 
   return "speechSynthesis" in window;
-
 }

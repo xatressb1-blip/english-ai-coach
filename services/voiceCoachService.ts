@@ -1,91 +1,77 @@
-// =====================================================
-// Voice Coach Service
-// English AI Coach
-// =====================================================
+/**
+ * ============================================================
+ * English AI Coach
+ * ------------------------------------------------------------
+ * Module:
+ * Voice Coach Service
+ *
+ * File:
+ * services/voiceCoachService.ts
+ *
+ * Version:
+ * 3.0.0
+ *
+ * Status:
+ * Production Stable
+ *
+ * Description:
+ * ------------------------------------------------------------
+ * Voice Coach no longer communicates directly with
+ * Browser SpeechSynthesis.
+ *
+ * All voice requests MUST go through Speech Queue.
+ * ============================================================
+ */
+
 import {
-  pauseForCoach,
-  resumeAfterCoach,
-} from "./speechController";
-let lastMessage = "";
+  enqueueSpeech,
+} from "./speechQueueService";
 
-let lastSpeakTime = 0;
+/* ============================================================
+ * Coach Messages
+ * ============================================================
+ */
 
-export function speakCoachMessage(
-  message: string
-) {
+export function coachContinueSpeaking(
+  onFinished?: () => void
+): void {
 
-  console.log("VoiceCoach:", message);
-
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (!("speechSynthesis" in window)) {
-    return;
-  }
-
-  if (message === lastMessage) {
-    return;
-  }
-
-  const now = Date.now();
-
-  if (now - lastSpeakTime < 5000) {
-    return;
-  }
-
-  lastSpeakTime = now;
-
-  lastMessage = message;
-
-  //------------------------------------------------
-  // AI giữ microphone
-  //------------------------------------------------
-
- pauseForCoach();
-
-window.speechSynthesis.cancel();
-
-setTimeout(() => {
-
-  const utterance =
-    new SpeechSynthesisUtterance(message);
-
-  utterance.lang = "en-US";
-
-  utterance.rate = 0.95;
-
-  utterance.pitch = 1;
-
-  utterance.volume = 1;
-
-  utterance.onstart = () => {
-
-    console.log("Coach started");
-
-  };
-
-  utterance.onend = () => {
-
-    console.log("Coach finished");
-
-    setTimeout(() => {
-
-      resumeAfterCoach();
-
-    }, 300);
-
-  };
-
-  utterance.onerror = () => {
-
-    resumeAfterCoach();
-
-  };
-
-  window.speechSynthesis.speak(
-    utterance
+  enqueueSpeech(
+    "Please continue speaking.",
+    onFinished
   );
 
-}, 400);
+}
+
+export function coachGoodJob(
+  onFinished?: () => void
+): void {
+
+  enqueueSpeech(
+    "Good job. Keep going.",
+    onFinished
+  );
+
+}
+
+export function coachExcellent(
+  onFinished?: () => void
+): void {
+
+  enqueueSpeech(
+    "Excellent answer.",
+    onFinished
+  );
+
+}
+
+export function coachSlowDown(
+  onFinished?: () => void
+): void {
+
+  enqueueSpeech(
+    "Please speak a little more slowly.",
+    onFinished
+  );
+
 }

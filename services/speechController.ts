@@ -1,96 +1,226 @@
-// ======================================================
-// Speech Controller
-// English AI Coach
-// ======================================================
+/**
+ * ============================================================
+ * English AI Coach
+ * ------------------------------------------------------------
+ * Module:
+ * Speech Controller
+ *
+ * File:
+ * services/speechController.ts
+ *
+ * Version:
+ * 3.0 Stable
+ *
+ * Status:
+ * READY FOR FREEZE
+ *
+ * Description
+ * ------------------------------------------------------------
+ * Business Logic Layer.
+ *
+ * This service NEVER owns UI state.
+ *
+ * UI state belongs ONLY to:
+ *
+ * SpeechContext
+ *
+ * ============================================================
+ */
 
 import {
+
   getRecognition,
+
   pauseRecognition,
+
   resumeRecognition,
+
 } from "./speechRecognitionManager";
 
-let pausedByAI = false;
+import type {
 
-/**
- * AI tạm dừng microphone
+  BrowserSpeechRecognition,
+
+} from "./speechRecognitionService";
+
+/* ============================================================
+ * Internal State
+ * ============================================================
  */
-export function pauseForCoach() {
 
-  if (pausedByAI) {
-    return;
-  }
+let coachSpeaking = false;
 
-  pausedByAI = true;
+/* ============================================================
+ * Helpers
+ * ============================================================
+ */
 
-  pauseRecognition();
+function getInstance():
+
+  BrowserSpeechRecognition | null {
+
+  return getRecognition();
 
 }
 
-/**
- * AI mở lại microphone
- */
-export function resumeAfterCoach() {
+function safeStart(
 
-  if (!pausedByAI) {
-    return;
-  }
+  recognition: BrowserSpeechRecognition
 
-  pausedByAI = false;
-
-  resumeRecognition();
-
-}
-
-/**
- * AI đang giữ microphone?
- */
-export function isPausedByCoach() {
-
-  return pausedByAI;
-
-}
-//------------------------------------------------------
-// Manual Recording Control
-//------------------------------------------------------
-
-export function startRecording() {
-
-  const recognition =
-    getRecognition();
-
-  if (!recognition) {
-    return;
-  }
+): boolean {
 
   try {
 
     recognition.start();
 
+    return true;
+
   } catch {
 
-    // ignore
+    return false;
 
   }
 
 }
 
-export function stopRecording() {
+function safeStop(
 
-  const recognition =
-    getRecognition();
+  recognition: BrowserSpeechRecognition
 
-  if (!recognition) {
-    return;
-  }
+): boolean {
 
   try {
 
     recognition.stop();
 
+    return true;
+
   } catch {
 
-    // ignore
+    return false;
 
   }
+
+}
+/* ============================================================
+ * Recording Control
+ * ============================================================
+ */
+
+export function startRecording(): boolean {
+
+  if (coachSpeaking) {
+
+    console.warn(
+      "[SpeechController] AI Coach is speaking."
+    );
+
+    return false;
+
+  }
+
+  const recognition =
+    getInstance();
+
+  if (!recognition) {
+
+    console.warn(
+      "[SpeechController] No SpeechRecognition instance."
+    );
+
+    return false;
+
+  }
+
+  return safeStart(
+    recognition
+  );
+
+}
+
+export function stopRecording(): boolean {
+
+  const recognition =
+    getInstance();
+
+  if (!recognition) {
+
+    return false;
+
+  }
+
+  return safeStop(
+    recognition
+  );
+
+}
+
+export function toggleRecording(
+
+  recording: boolean
+
+): boolean {
+
+  if (recording) {
+
+    return stopRecording();
+
+  }
+
+  return startRecording();
+
+}
+/* ============================================================
+ * Coach Control
+ * ============================================================
+ */
+
+export function pauseForCoach(): void {
+
+  if (coachSpeaking) {
+
+    return;
+
+  }
+
+  coachSpeaking = true;
+
+  pauseRecognition();
+
+}
+
+export function resumeAfterCoach(): void {
+
+  if (!coachSpeaking) {
+
+    return;
+
+  }
+
+  coachSpeaking = false;
+
+  resumeRecognition();
+
+}
+
+/* ============================================================
+ * Query State
+ * ============================================================
+ */
+
+export function isCoachSpeaking(): boolean {
+
+  return coachSpeaking;
+
+}
+
+/* ============================================================
+ * Reset
+ * ============================================================
+ */
+
+export function resetControllerState(): void {
+
+  coachSpeaking = false;
 
 }

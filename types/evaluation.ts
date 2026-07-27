@@ -27,13 +27,54 @@ export interface GrammarResult
  */
 export interface FocusAnalysis {
 
-  sentenceCount: number;
+  /*
+   * Overall focus score
+   * 0 - 100
+   */
 
-  isTooShort: boolean;
+  overallScore: number;
 
-  isTooLong: boolean;
+  /*
+   * Coverage
+   */
 
-  isFocused: boolean;
+  coverageScore: number;
+
+  /*
+   * Structure
+   */
+
+  structureScore: number;
+
+  /*
+   * Length
+   */
+
+  lengthScore: number;
+
+  /*
+   * Estimated statistics
+   */
+
+  estimatedWords: number;
+
+  estimatedSentences: number;
+
+  totalIdeas: number;
+
+  /*
+   * Topics
+   */
+
+  coveredTopics: string[];
+
+  missingTopics: string[];
+
+  extraTopics: string[];
+
+  /*
+   * AI Feedback
+   */
 
   feedback: string;
 

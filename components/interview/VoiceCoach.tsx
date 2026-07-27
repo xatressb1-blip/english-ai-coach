@@ -1,48 +1,111 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useSpeechActivity } from "@/context/SpeechActivityContext";
 
 import { SpeechActivity } from "@/services/speechActivityService";
 
-import { speakCoachMessage } from "@/services/voiceCoachService";
+import {
+  coachContinueSpeaking,
+} from "@/services/voiceCoachService";
 
 export default function VoiceCoach() {
 
   const { activity } =
     useSpeechActivity();
 
+  //--------------------------------------------------------
+  // Remember previous activity
+  //--------------------------------------------------------
+
+  const previousActivity =
+    useRef<SpeechActivity>(
+      SpeechActivity.IDLE
+    );
+
+  //--------------------------------------------------------
+  // Prevent speaking multiple times
+  //--------------------------------------------------------
+
+  const coachSpeaking =
+    useRef(false);
+
+  //--------------------------------------------------------
+  // Voice Coach
+  //--------------------------------------------------------
+
   useEffect(() => {
 
-    switch (activity.activity) {
+    //------------------------------------------------------
+    // Ignore if activity has not changed
+    //------------------------------------------------------
 
-      case SpeechActivity.PAUSED:
+    if (
+      previousActivity.current ===
+      activity.activity
+    ) {
+      return;
+    }
 
-        speakCoachMessage(
-          "Please continue speaking."
-        );
+    console.log(
+      "Speech Activity:",
+      previousActivity.current,
+      "→",
+      activity.activity
+    );
 
-        break;
+    //------------------------------------------------------
+    // Update previous activity
+    //------------------------------------------------------
 
-      case SpeechActivity.SPEAKING:
+    previousActivity.current =
+      activity.activity;
 
-        // Chưa đọc gì
-        break;
+    //------------------------------------------------------
+    // User paused
+    //------------------------------------------------------
 
-      case SpeechActivity.IDLE:
+    if (
+      activity.activity ===
+      SpeechActivity.PAUSED
+    ) {
 
-        // Chưa đọc gì
-        break;
+      if (coachSpeaking.current) {
+        return;
+      }
 
-      case SpeechActivity.FINISHED:
+      coachSpeaking.current = true;
 
-        // Chưa dùng
-        break;
+      console.log(
+        "Coach started"
+      );
+
+    coachContinueSpeaking(() => {
+
+  coachSpeaking.current = false;
+
+  console.log("Coach finished");
+
+});
+      return;
 
     }
 
-  }, [activity]);
+    //------------------------------------------------------
+    // Reset when user speaks again
+    //------------------------------------------------------
+
+    if (
+      activity.activity ===
+      SpeechActivity.SPEAKING
+    ) {
+
+      coachSpeaking.current = false;
+
+    }
+
+  }, [activity.activity]);
 
   return null;
 

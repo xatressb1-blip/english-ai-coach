@@ -3,28 +3,27 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
   ReactNode,
 } from "react";
 
-import { useSpeechContext } from "@/context/SpeechContext";
-
 import {
-  detectSpeechActivity,
+  SpeechActivity,
   SpeechActivityResult,
 } from "@/services/speechActivityService";
 
 interface SpeechActivityContextType {
-
   activity: SpeechActivityResult;
 
+  setActivity: (
+    activity: SpeechActivityResult
+  ) => void;
 }
 
 const SpeechActivityContext =
-  createContext<SpeechActivityContextType | null>(
-    null
-  );
+  createContext<
+    SpeechActivityContextType | undefined
+  >(undefined);
 
 export function SpeechActivityProvider({
   children,
@@ -32,61 +31,29 @@ export function SpeechActivityProvider({
   children: ReactNode;
 }) {
 
-  const { transcript } =
-    useSpeechContext();
-
-  const [
-    activity,
-    setActivity,
-  ] = useState<SpeechActivityResult>(
-    detectSpeechActivity("")
-  );
-
-  useEffect(() => {
-
-    const timer =
-      setInterval(() => {
-
-        setActivity(
-
-          detectSpeechActivity(
-            transcript
-          )
-
-        );
-
-      }, 500);
-
-    return () => {
-
-      clearInterval(timer);
-
-    };
-
-  }, [transcript]);
+  const [activity, setActivity] =
+    useState<SpeechActivityResult>({
+      activity: SpeechActivity.IDLE,
+      silenceDuration: 0,
+      message: "Waiting for your answer.",
+    });
 
   return (
-
     <SpeechActivityContext.Provider
       value={{
         activity,
+        setActivity,
       }}
     >
-
       {children}
-
     </SpeechActivityContext.Provider>
-
   );
-
 }
 
 export function useSpeechActivity() {
 
   const context =
-    useContext(
-      SpeechActivityContext
-    );
+    useContext(SpeechActivityContext);
 
   if (!context) {
 

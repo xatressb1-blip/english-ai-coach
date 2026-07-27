@@ -1,15 +1,64 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+/**
+ * ============================================================
+ * English AI Coach
+ * ------------------------------------------------------------
+ * Module:
+ * Speech Recorder
+ *
+ * File:
+ * components/SpeechRecorder.tsx
+ *
+ * Version:
+ * 3.0 Stable
+ *
+ * Description
+ * ------------------------------------------------------------
+ * UI Layer of Speech Module.
+ *
+ * Responsibilities
+ * ------------------------------------------------------------
+ * • Display transcript
+ * • Display recording status
+ * • Receive user interaction
+ *
+ * IMPORTANT
+ * ------------------------------------------------------------
+ * This component NEVER talks directly to Browser APIs.
+ *
+ * Browser API
+ *      ↓
+ * SpeechRecognitionService
+ *      ↓
+ * SpeechRecognitionManager
+ *      ↓
+ * SpeechController
+ *      ↓
+ * SpeechContext
+ *      ↓
+ * SpeechRecorder (UI)
+ * ============================================================
+ */
 
-import { useSpeechContext } from "@/context/SpeechContext";
+import {
+  useEffect,
+  useRef,
+} from "react";
+
+import {
+  useSpeechContext,
+} from "@/context/SpeechContext";
 
 import {
   createSpeechRecognition,
+  destroySpeechRecognition,
+  type BrowserSpeechRecognition,
 } from "@/services/speechRecognitionService";
 
 import {
   registerRecognition,
+  unregisterRecognition,
 } from "@/services/speechRecognitionManager";
 
 import {
@@ -17,73 +66,103 @@ import {
   stopRecording,
 } from "@/services/speechController";
 
+/* ============================================================
+ * Component
+ * ============================================================
+ */
+
 export default function SpeechRecorder() {
-console.log("===== SPEECH RECORDER RENDER =====");
+
+  /* ==========================================================
+   * Speech Context
+   * ==========================================================
+   */
+
   const {
+
     transcript,
+
     setTranscript,
 
     status,
+
     setStatus,
+
+    resetSpeech,
 
   } = useSpeechContext();
 
-  const recognitionRef = useRef<any>(null);
+  /* ==========================================================
+   * Recognition Reference
+   * ==========================================================
+   */
 
-  //--------------------------------------------------
-  // Initialize Speech Recognition
-  //--------------------------------------------------
+  const recognitionRef =
+    useRef<BrowserSpeechRecognition | null>(
+      null
+    );
+      /* ==========================================================
+   * Initialize Speech Recognition
+   * ==========================================================
+   */
 
   useEffect(() => {
 
-    recognitionRef.current =
+    const recognition =
       createSpeechRecognition({
 
-        //----------------------------------
-        // Recognition Started
-        //----------------------------------
+        /* ----------------------------------------------
+         * Recognition Started
+         * ---------------------------------------------- */
 
         onStart: () => {
 
-          console.log("Recognition Started");
+          console.log(
+            "[SpeechRecorder] Recognition Started"
+          );
 
           setStatus("recording");
 
         },
 
-        //----------------------------------
-        // Recognition Result
-        //----------------------------------
+        /* ----------------------------------------------
+         * Recognition Result
+         * ---------------------------------------------- */
 
-        onResult: (text: string) => {
-
-          console.log("Speech Result:", text);
+        onResult: (
+          text: string
+        ) => {
 
           setTranscript(text);
 
         },
 
-        //----------------------------------
-        // Recognition Error
-        //----------------------------------
+        /* ----------------------------------------------
+         * Recognition Error
+         * ---------------------------------------------- */
 
-        onError: (error: string) => {
+        onError: (
+          message: string
+        ) => {
 
-          console.log("Speech Error:", error);
-
-          console.error(error);
+          console.error(
+            "[SpeechRecorder]",
+            message
+          );
 
           setStatus("finished");
 
         },
 
-        //----------------------------------
-        // Recognition End
-        //----------------------------------
+        /* ----------------------------------------------
+         * Recognition End
+         * ---------------------------------------------- */
 
         onEnd: () => {
 
-          console.log("Recognition Ended");
+          console.log(
+            "[SpeechRecorder] Recognition Ended"
+          );
 
           setStatus("finished");
 
@@ -91,101 +170,142 @@ console.log("===== SPEECH RECORDER RENDER =====");
 
       });
 
-    //--------------------------------------------------
-    // VERY IMPORTANT
-    //--------------------------------------------------
+    recognitionRef.current =
+      recognition;
 
     registerRecognition(
-      recognitionRef.current
+      recognition
     );
 
     return () => {
 
-      recognitionRef.current?.stop();
+      unregisterRecognition();
+
+      destroySpeechRecognition(
+        recognition
+      );
+
+      recognitionRef.current =
+        null;
 
     };
 
   }, [
+
     setTranscript,
+
     setStatus,
+
   ]);
+    /* ==========================================================
+   * Event Handlers
+   * ==========================================================
+   */
 
-  //--------------------------------------------------
-  // Start Recording
-  //--------------------------------------------------
-
-  const handleStartRecording = () => {
-
-    console.log("========== START RECORDING ==========");
-
-    console.log(
-      "SpeechRecognition available:",
-      "SpeechRecognition" in window,
-      "webkitSpeechRecognition" in window
-    );
+  /**
+   * Start Recording
+   */
+  const handleStartRecording = (): void => {
 
     console.log(
-      "Recognition Object:",
-      recognitionRef.current
+      "[SpeechRecorder] Start Button Clicked"
     );
 
-    setTranscript("");
+    if (status === "recording") {
 
-    setStatus("recording");
+      return;
 
-    startRecording();
+    }
 
-  };
+    resetSpeech();
 
-  //--------------------------------------------------
-  // Stop Recording
-  //--------------------------------------------------
+    const started =
+      startRecording();
 
-  const handleStopRecording = () => {
+    if (!started) {
 
-    stopRecording();
+      console.warn(
+        "[SpeechRecorder] Unable to start recording."
+      );
 
-    setStatus("processing");
-
-  };
-
-  //--------------------------------------------------
-  // Clear Transcript
-  //--------------------------------------------------
-
-  const clearTranscript = () => {
-
-    setTranscript("");
-
-    setStatus("ready");
+    }
 
   };
 
-  //--------------------------------------------------
-  // Status Text
-  //--------------------------------------------------
+  /**
+   * Stop Recording
+   */
+  const handleStopRecording = (): void => {
+
+    console.log(
+      "[SpeechRecorder] Stop Button Clicked"
+    );
+
+    if (status !== "recording") {
+
+      return;
+
+    }
+
+    const stopped =
+      stopRecording();
+
+    if (stopped) {
+
+      setStatus("processing");
+
+    }
+
+  };
+
+  /**
+   * Clear Transcript
+   */
+  const handleClearTranscript = (): void => {
+
+    if (status === "recording") {
+
+      return;
+
+    }
+
+    resetSpeech();
+
+  };
+
+  /* ==========================================================
+   * Status Text
+   * ==========================================================
+   */
 
   const statusText: Record<
+
     "ready" |
     "recording" |
     "processing" |
     "finished",
+
     string
+
   > = {
 
-    ready: "🎤 Ready to practice",
+    ready:
+      "🎤 Ready to practice",
 
-    recording: "🔴 Recording...",
+    recording:
+      "🔴 Recording...",
 
-    processing: "🤖 AI is evaluating...",
+    processing:
+      "🤖 AI is evaluating...",
 
-    finished: "✅ Recording completed",
+    finished:
+      "✅ Recording completed",
 
   };
-
-  //--------------------------------------------------
-  // UI
-  //--------------------------------------------------
+    /* ==========================================================
+   * UI
+   * ==========================================================
+   */
 
   return (
 
@@ -201,26 +321,16 @@ console.log("===== SPEECH RECORDER RENDER =====");
 
         {
 
-          status !== "recording"
+          status === "recording"
 
             ? (
 
               <button
-                onClick={handleStartRecording}
-                className="rounded-lg bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
-              >
 
-                🎤 Start Recording
-
-              </button>
-
-            )
-
-            : (
-
-              <button
                 onClick={handleStopRecording}
+
                 className="rounded-lg bg-gray-700 px-6 py-3 font-medium text-white hover:bg-gray-800"
+
               >
 
                 ⏹ Stop Recording
@@ -229,31 +339,32 @@ console.log("===== SPEECH RECORDER RENDER =====");
 
             )
 
+            : (
+
+              <button
+
+                onClick={handleStartRecording}
+
+                className="rounded-lg bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+
+              >
+
+                🎤 Start Recording
+
+              </button>
+
+            )
+
         }
 
         <button
-          onClick={() => {
 
-            const u =
-              new SpeechSynthesisUtterance(
-                "Hello. This is a voice test."
-              );
+          onClick={handleClearTranscript}
 
-            u.lang = "en-US";
+          disabled={status === "recording"}
 
-            window.speechSynthesis.speak(u);
+          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 
-          }}
-          className="rounded-lg bg-green-600 px-6 py-3 text-white"
-        >
-
-          🔊 Test Voice
-
-        </button>
-
-        <button
-          onClick={clearTranscript}
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
         >
 
           🗑 Clear
@@ -284,7 +395,7 @@ console.log("===== SPEECH RECORDER RENDER =====");
 
           {
 
-            transcript
+            transcript.trim().length > 0
 
               ? (
 
