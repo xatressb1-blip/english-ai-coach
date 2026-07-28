@@ -9,88 +9,296 @@ import {
 export default function InterviewStatusBar() {
 
   const {
+
     currentQuestionIndex,
+
     totalQuestions,
+
     remainingQuestions,
+
     flow,
+
   } = useInterviewContext();
 
-  function getStatusColor() {
+  function getStatusStyle() {
 
     switch (flow.state) {
 
       case InterviewState.IDLE:
-        return "text-gray-600";
+
+        return {
+          icon: "⚪",
+          color: "text-gray-700",
+          badge: "bg-gray-100 text-gray-700",
+        };
 
       case InterviewState.ASKING:
-        return "text-blue-600";
+
+        return {
+          icon: "🤖",
+          color: "text-blue-700",
+          badge: "bg-blue-100 text-blue-700",
+        };
 
       case InterviewState.LISTENING:
-        return "text-red-600";
+
+        return {
+          icon: "🎤",
+          color: "text-red-700",
+          badge: "bg-red-100 text-red-700",
+        };
 
       case InterviewState.EVALUATING:
-        return "text-yellow-600";
+
+        return {
+          icon: "🧠",
+          color: "text-yellow-700",
+          badge: "bg-yellow-100 text-yellow-700",
+        };
 
       case InterviewState.READY_NEXT:
-        return "text-green-600";
+
+        return {
+          icon: "✅",
+          color: "text-green-700",
+          badge: "bg-green-100 text-green-700",
+        };
 
       case InterviewState.FINISHED:
-        return "text-green-700";
+
+        return {
+          icon: "🎉",
+          color: "text-green-700",
+          badge: "bg-green-100 text-green-700",
+        };
 
       default:
-        return "text-gray-600";
+
+        return {
+          icon: "⚪",
+          color: "text-gray-700",
+          badge: "bg-gray-100 text-gray-700",
+        };
 
     }
 
   }
 
+  const status = getStatusStyle();
+
   return (
 
-    <div className="rounded-xl border bg-slate-50 p-6">
+    <section
+      className="
+        rounded-2xl
 
-      <div className="grid gap-6 md:grid-cols-3">
+        border
+        border-slate-200
 
-        <div>
+        bg-white
 
-          <p className="text-sm text-gray-500">
+        p-5
+        sm:p-6
+
+        shadow-md
+      "
+    >
+
+      <div
+        className="
+          grid
+
+          gap-4
+
+          sm:grid-cols-2
+
+          lg:grid-cols-3
+        "
+      >
+
+        {/* Current */}
+
+        <div
+          className="
+            rounded-xl
+
+            bg-blue-50
+
+            p-4
+
+            shadow-sm
+          "
+        >
+
+          <p
+            className="
+              text-xs
+
+              uppercase
+
+              tracking-wide
+
+              text-slate-500
+            "
+          >
             Current Question
           </p>
 
-          <p className="text-xl font-bold text-blue-600">
-            {currentQuestionIndex + 1} / {totalQuestions}
+          <p
+            className="
+              mt-2
+
+              text-3xl
+
+              font-bold
+
+              text-blue-700
+            "
+          >
+            {currentQuestionIndex + 1}
+
+            <span className="text-slate-400">
+
+              {" / "}
+
+              {totalQuestions}
+
+            </span>
+
           </p>
 
         </div>
 
-        <div>
+        {/* Remaining */}
 
-          <p className="text-sm text-gray-500">
-            Remaining Questions
+        <div
+          className="
+            rounded-xl
+
+            bg-orange-50
+
+            p-4
+
+            shadow-sm
+          "
+        >
+
+          <p
+            className="
+              text-xs
+
+              uppercase
+
+              tracking-wide
+
+              text-slate-500
+            "
+          >
+            Remaining
           </p>
 
-          <p className="text-xl font-bold text-orange-600">
+          <p
+            className="
+              mt-2
+
+              text-3xl
+
+              font-bold
+
+              text-orange-700
+            "
+          >
             {remainingQuestions}
           </p>
 
         </div>
 
-        <div>
+        {/* Status */}
 
-          <p className="text-sm text-gray-500">
-            AI Interview Status
-          </p>
+        <div
+          className="
+            rounded-xl
+
+            bg-slate-50
+
+            p-4
+
+            shadow-sm
+          "
+        >
 
           <p
-            className={`text-lg font-bold ${getStatusColor()}`}
+            className="
+              text-xs
+
+              uppercase
+
+              tracking-wide
+
+              text-slate-500
+            "
           >
-            {flow.message}
+            AI Status
           </p>
+
+          <div
+            className="
+              mt-3
+
+              flex
+
+              items-center
+
+              gap-3
+            "
+          >
+
+            <span className="text-3xl">
+
+              {status.icon}
+
+            </span>
+
+            <div>
+
+              <span
+                className={`
+                  rounded-full
+
+                  px-3
+                  py-1
+
+                  text-xs
+
+                  font-semibold
+
+                  ${status.badge}
+                `}
+              >
+                {flow.state}
+              </span>
+
+              <p
+                className={`
+                  mt-2
+
+                  font-semibold
+
+                  ${status.color}
+                `}
+              >
+                {flow.message}
+              </p>
+
+            </div>
+
+          </div>
 
         </div>
 
       </div>
 
-    </div>
+    </section>
 
   );
 

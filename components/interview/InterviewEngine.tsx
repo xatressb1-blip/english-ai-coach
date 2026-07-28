@@ -8,7 +8,6 @@ import {
   InterviewState,
   readyInterview,
 } from "@/services/interviewFlowService";
-
 import InterviewHeader from "./InterviewHeader";
 import InterviewProgress from "./InterviewProgress";
 import InterviewQuestionCard from "./InterviewQuestionCard";
@@ -17,14 +16,15 @@ import InterviewStatusBar from "./InterviewStatusBar";
 import AIInterviewer from "./AIInterviewer";
 import WelcomeInterviewer from "./WelcomeInterviewer";
 import ReadyScreen from "./ReadyScreen";
-
 import SpeechRecorder from "../SpeechRecorder";
 import AIEvaluation from "../evaluation/AIEvaluation";
 import LiveCoachPanel from "./LiveCoachPanel";
 import VoiceCoach from "./VoiceCoach";
 import VoiceCoachBubble from "./VoiceCoachBubble";
+import FeedbackButton from "../feedback/FeedbackButton";
+import FeedbackDialog from "../feedback/FeedbackDialog";
 export default function InterviewEngine() {
-
+const [feedbackOpen, setFeedbackOpen] = useState(false);
   const {
 
     currentQuestion,
@@ -284,6 +284,17 @@ export default function InterviewEngine() {
          <AIEvaluation />
         <InterviewNavigator />
       </div>
+         <FeedbackButton
+        onClick={() => setFeedbackOpen(true)}
+      />
+
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+      />
+
     </div>
+
   );
+
 }

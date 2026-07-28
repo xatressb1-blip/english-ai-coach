@@ -6,8 +6,11 @@ import { useVoiceCoach } from "@/context/VoiceCoachContext";
 export default function VoiceCoachBubble() {
 
   const {
+
     visible,
+
     message,
+
   } = useVoiceCoach();
 
   const [showBubble, setShowBubble] = useState(false);
@@ -35,87 +38,155 @@ export default function VoiceCoachBubble() {
   }, [visible]);
 
   if (!showBubble) {
+
     return null;
+
   }
 
   return (
 
-    <div
+    <section
       className="
-        mb-5
-        sm:mb-6
+        mb-6
 
-        rounded-xl
+        animate-in
+        fade-in
+        slide-in-from-top-2
 
-        border-l-4
-        border-blue-500
-
-        bg-blue-50
-
-        p-4
-        sm:p-5
-
-        shadow-sm
-
-        transition-all
         duration-500
-        ease-in-out
       "
     >
 
       <div
         className="
-          flex
-          items-start
-          gap-3
+          rounded-2xl
+
+          border
+          border-blue-200
+
+          bg-gradient-to-r
+          from-blue-50
+          to-indigo-50
+
+          p-5
+
+          shadow-md
         "
       >
 
         <div
           className="
-            text-2xl
+            flex
 
-            shrink-0
+            items-start
+
+            gap-4
           "
         >
-          🤖
-        </div>
 
-        <div className="flex-1">
+          {/* Avatar */}
 
-          <h3
+          <div
             className="
-              text-base
-              sm:text-lg
+              flex
 
-              font-semibold
+              h-14
+              w-14
 
-              text-blue-700
+              items-center
+              justify-center
+
+              rounded-full
+
+              bg-blue-600
+
+              text-3xl
+
+              text-white
+
+              shadow-md
+
+              shrink-0
             "
           >
-            AI Recruiter
-          </h3>
+            🤖
+          </div>
 
-          <p
-            className="
-              mt-1
+          {/* Content */}
 
-              text-sm
-              sm:text-base
+          <div className="flex-1">
 
-              leading-7
+            <div
+              className="
+                flex
 
-              text-gray-700
-            "
-          >
-            {message}
-          </p>
+                flex-wrap
+
+                items-center
+
+                gap-3
+              "
+            >
+
+              <h3
+                className="
+                  text-lg
+
+                  font-bold
+
+                  text-blue-700
+                "
+              >
+                AI Recruiter
+              </h3>
+
+              <span
+                className="
+                  rounded-full
+
+                  bg-blue-100
+
+                  px-3
+                  py-1
+
+                  text-xs
+
+                  font-semibold
+
+                  uppercase
+
+                  tracking-wide
+
+                  text-blue-700
+                "
+              >
+                Speaking
+              </span>
+
+            </div>
+
+            <p
+              className="
+                mt-4
+
+                text-base
+                sm:text-lg
+
+                leading-8
+
+                text-slate-700
+              "
+            >
+              {message}
+            </p>
+
+          </div>
 
         </div>
 
       </div>
 
-    </div>
+    </section>
 
   );
 

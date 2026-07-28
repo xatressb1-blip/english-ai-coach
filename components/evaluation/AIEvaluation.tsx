@@ -119,7 +119,7 @@ export default function AIEvaluation() {
 
         >
 
-          {loading ? "Evaluating..." : "✨ Evaluate"}
+          {loading ? "Evaluating..." : "✨ Evaluate Answer"}
 
         </button>
 
@@ -213,7 +213,7 @@ export default function AIEvaluation() {
               text-gray-600
             "
           >
-            Gemini is evaluating your answer...
+            🤖 AI Recruiter is analysing your interview...
           </p>
 
         </div>
@@ -322,7 +322,7 @@ export default function AIEvaluation() {
               text-gray-500
             "
           >
-            Record your answer using the microphone,
+           Finish speaking,
             then click <strong>Evaluate</strong>
             to receive detailed AI feedback.
           </p>

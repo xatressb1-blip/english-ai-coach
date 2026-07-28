@@ -6,79 +6,164 @@ export default function LiveCoachPanel() {
 
   const { coach } = useLiveCoach();
 
-  const color = {
+  const style = {
 
-    success:
-      "border-green-300 bg-green-50 text-green-700",
+    success: {
 
-    warning:
-      "border-yellow-300 bg-yellow-50 text-yellow-700",
+      card: "border-green-200 bg-green-50",
 
-    error:
-      "border-red-300 bg-red-50 text-red-700",
+      badge: "bg-green-100 text-green-700",
+
+      title: "text-green-700",
+
+      icon: "😊",
+
+    },
+
+    warning: {
+
+      card: "border-yellow-200 bg-yellow-50",
+
+      badge: "bg-yellow-100 text-yellow-700",
+
+      title: "text-yellow-700",
+
+      icon: "💡",
+
+    },
+
+    error: {
+
+      card: "border-red-200 bg-red-50",
+
+      badge: "bg-red-100 text-red-700",
+
+      title: "text-red-700",
+
+      icon: "⚠️",
+
+    },
 
   }[coach.level];
 
   return (
 
-    <div
+    <section
       className={`
-        rounded-xl
-        lg:rounded-2xl
+        rounded-2xl
 
         border
 
-        p-4
-        sm:p-5
+        p-5
+        sm:p-6
 
-        shadow-sm
+        shadow-md
 
         transition-all
+        duration-500
 
-        ${color}
+        ${style.card}
       `}
     >
 
       <div
         className="
           flex
+
           items-start
-          gap-3
+
+          gap-4
         "
       >
 
+        {/* Avatar */}
+
         <div
           className="
-            text-2xl
-            sm:text-3xl
+            flex
+
+            h-14
+            w-14
+
+            items-center
+            justify-center
+
+            rounded-full
+
+            bg-white
+
+            text-3xl
+
+            shadow-sm
 
             shrink-0
           "
         >
-          🎙
+          {style.icon}
         </div>
+
+        {/* Content */}
 
         <div className="flex-1">
 
-          <h3
+          <div
             className="
-              text-lg
-              sm:text-xl
+              flex
 
-              font-bold
+              flex-wrap
+
+              items-center
+
+              gap-3
             "
           >
-            Live AI Coach
-          </h3>
+
+            <h3
+              className={`
+                text-lg
+                sm:text-xl
+
+                font-bold
+
+                ${style.title}
+              `}
+            >
+              Live AI Coach
+            </h3>
+
+            <span
+              className={`
+                rounded-full
+
+                px-3
+                py-1
+
+                text-xs
+
+                font-semibold
+
+                uppercase
+
+                tracking-wide
+
+                ${style.badge}
+              `}
+            >
+              {coach.level}
+            </span>
+
+          </div>
 
           <p
             className="
-              mt-1
+              mt-4
 
-              text-sm
-              sm:text-base
+              text-base
+              sm:text-lg
 
-              leading-7
+              leading-8
+
+              text-slate-700
             "
           >
             {coach.message}
@@ -88,7 +173,7 @@ export default function LiveCoachPanel() {
 
       </div>
 
-    </div>
+    </section>
 
   );
 

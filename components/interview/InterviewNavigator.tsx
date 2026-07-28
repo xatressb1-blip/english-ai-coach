@@ -171,9 +171,9 @@ export default function InterviewNavigator() {
 
           {isLastQuestion
 
-            ? "✅ Finish Interview"
+            ? "✅ View Final Result"
 
-            : "Next ➜"}
+            : "Next Question →"}
 
         </button>
 
