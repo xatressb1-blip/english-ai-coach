@@ -22,6 +22,7 @@ import SpeechRecorder from "../SpeechRecorder";
 import AIEvaluation from "../evaluation/AIEvaluation";
 import LiveCoachPanel from "./LiveCoachPanel";
 import VoiceCoach from "./VoiceCoach";
+import VoiceCoachBubble from "./VoiceCoachBubble";
 export default function InterviewEngine() {
 
   const {
@@ -57,7 +58,20 @@ export default function InterviewEngine() {
 
     return (
 
-      <div className="mx-auto max-w-5xl">
+      <div
+  className="
+    mx-auto
+
+    w-full
+
+    max-w-3xl
+    lg:max-w-5xl
+
+    px-2
+    sm:px-4
+    lg:px-0
+  "
+>
 
         <WelcomeInterviewer
 
@@ -89,7 +103,16 @@ export default function InterviewEngine() {
 
   if (flow.state === InterviewState.READY) {
     return (
-      <div className="mx-auto max-w-5xl">
+      <div
+  className="
+    mx-auto
+    w-full
+    max-w-5xl
+    px-2
+    sm:px-4
+    lg:px-0
+  "
+>
         <ReadyScreen
           current={currentQuestionIndex + 1}
           total={totalQuestions}
@@ -107,19 +130,74 @@ export default function InterviewEngine() {
 
     return (
 
-      <div className="mx-auto max-w-5xl rounded-2xl bg-white p-10 shadow-xl">
+      <div
+  className="
+    mx-auto
+    w-full
+    max-w-5xl
+
+    rounded-xl
+    lg:rounded-2xl
+
+    bg-white
+
+    p-4
+    sm:p-6
+    lg:p-10
+
+    shadow-md
+    lg:shadow-xl
+  "
+>
 
                <InterviewHeader />
 
-        <div className="mt-8 rounded-xl border border-green-300 bg-green-50 p-10 text-center">
+        <div
+  className="
+    mt-6
+    lg:mt-8
 
-          <h2 className="text-4xl font-bold text-green-700">
+    rounded-xl
+
+    border
+    border-green-300
+
+    bg-green-50
+
+    p-5
+    sm:p-8
+    lg:p-10
+
+    text-center
+  "
+>
+
+          <h2
+  className="
+    text-2xl
+    sm:text-3xl
+    lg:text-4xl
+
+    font-bold
+    text-green-700
+  "
+>
 
             🎉 Interview Completed
 
           </h2>
 
-          <p className="mt-5 text-lg text-gray-700">
+          <p
+  className="
+    mt-4
+    lg:mt-5
+
+    text-base
+    lg:text-lg
+
+    text-gray-700
+  "
+>
 
             Congratulations!
 
@@ -145,18 +223,47 @@ export default function InterviewEngine() {
 
   return (
 
-    <div className="mx-auto max-w-5xl rounded-2xl bg-white p-10 shadow-xl">
+    <div
+  className="
+    mx-auto
+    w-full
+    max-w-5xl
 
-      <div className="space-y-8">
+    rounded-xl
+    lg:rounded-2xl
+
+    bg-white
+
+    p-4
+    sm:p-6
+    lg:p-10
+
+    shadow-md
+    lg:shadow-xl
+  "
+>
+
+      <div
+  className="
+    space-y-5
+    sm:space-y-6
+    lg:space-y-8
+  "
+>
 
         <InterviewHeader />
 
-        <InterviewStatusBar />
-        <AIInterviewer />
+<InterviewStatusBar />
 
-        <LiveCoachPanel />
-        <VoiceCoach />
-        <InterviewProgress />
+<AIInterviewer />
+
+<VoiceCoachBubble />
+
+<LiveCoachPanel />
+
+<VoiceCoach />
+
+<InterviewProgress />
 
         <InterviewQuestionCard
 

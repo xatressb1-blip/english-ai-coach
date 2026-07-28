@@ -72,9 +72,19 @@ export default function InterviewNavigator() {
 
   return (
 
-    <div className="mt-10 space-y-4">
+    <div className="mt-8 sm:mt-10 space-y-4">
 
-      <div className="flex items-center justify-between">
+      <div
+        className="
+          flex
+          flex-col
+          gap-3
+
+          sm:flex-row
+          sm:items-center
+          sm:justify-between
+        "
+      >
 
         <button
 
@@ -83,13 +93,22 @@ export default function InterviewNavigator() {
           disabled={isFirstQuestion}
 
           className="
+            w-full
+            sm:w-auto
+
             rounded-lg
+
             bg-gray-300
+
             px-6
             py-3
+
             font-medium
+
             transition
+
             hover:bg-gray-400
+
             disabled:cursor-not-allowed
             disabled:opacity-50
           "
@@ -100,7 +119,19 @@ export default function InterviewNavigator() {
 
         </button>
 
-        <div className="text-center text-sm text-gray-500">
+        <div
+          className="
+            order-first
+
+            text-center
+
+            text-sm
+
+            text-gray-500
+
+            sm:order-none
+          "
+        >
 
           Question {currentQuestionIndex + 1} of {totalQuestions}
 
@@ -113,14 +144,24 @@ export default function InterviewNavigator() {
           disabled={!canGoNext}
 
           className="
+            w-full
+            sm:w-auto
+
             rounded-lg
+
             bg-blue-600
+
             px-6
             py-3
+
             font-medium
+
             text-white
+
             transition
+
             hover:bg-blue-700
+
             disabled:bg-gray-400
             disabled:cursor-not-allowed
             disabled:opacity-60
@@ -140,7 +181,28 @@ export default function InterviewNavigator() {
 
       {!canGoNext && (
 
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-center text-sm text-yellow-700">
+        <div
+          className="
+            rounded-lg
+
+            border
+            border-yellow-300
+
+            bg-yellow-50
+
+            p-3
+            sm:p-4
+
+            text-center
+
+            text-xs
+            sm:text-sm
+
+            leading-6
+
+            text-yellow-700
+          "
+        >
 
           ⚠ Please click <strong>Evaluate</strong> and wait until the AI finishes evaluating your answer before moving to the next question.
 

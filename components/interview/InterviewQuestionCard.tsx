@@ -51,42 +51,229 @@ export default function InterviewQuestionCard({
   };
 
   return (
-    <section className="mt-8">
+    <section
+  className="
+    mt-6
+    sm:mt-8
+    lg:mt-10
+  "
+>
 
-      <h2 className="text-4xl font-bold text-slate-800">
+      <h2
+  className="
+    text-2xl
+    sm:text-3xl
+    lg:text-4xl
+
+    font-bold
+
+    leading-tight
+
+    text-slate-800
+  "
+>
         {title}
       </h2>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div
+  className="
+    mt-4
+
+    flex
+    flex-wrap
+
+    gap-2
+    sm:gap-3
+  "
+>
 
         <span
-          className={`rounded-full px-3 py-1 text-sm font-medium ${getCategoryColor()}`}
+          className={`
+rounded-full
+
+px-3
+py-1.5
+
+text-xs
+sm:text-sm
+
+font-semibold
+
+${getCategoryColor()}
+`}
         >
           {category}
         </span>
 
         <span
-          className={`rounded-full px-3 py-1 text-sm font-medium ${getLevelColor()}`}
+         className={`
+rounded-full
+
+px-3
+py-1.5
+
+text-xs
+sm:text-sm
+
+font-semibold
+
+${getLevelColor()}
+`}
         >
           {level}
         </span>
 
-        <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-700">
+        <span className="
+rounded-full
+
+bg-orange-100
+
+px-3
+py-1.5
+
+text-xs
+sm:text-sm
+
+font-semibold
+
+text-orange-700
+">
           {duration} min
         </span>
 
       </div>
 
-      <div className="mt-8 rounded-xl border bg-white p-6 shadow-sm">
+      <div
+  className="
+    mt-6
+    sm:mt-8
 
-        <h3 className="mb-4 text-2xl font-semibold">
-          📄 Interview Question
+    rounded-2xl
+
+    border-l-4
+    border-l-blue-600
+
+    border
+    border-slate-200
+
+    bg-gradient-to-br
+    from-white
+    to-slate-50
+
+    p-4
+    sm:p-5
+    lg:p-8
+
+    shadow-md
+
+    transition-all
+  "
+>
+
+        <h3
+  className="
+    mb-4
+
+    text-lg
+    sm:text-xl
+    lg:text-2xl
+
+    font-semibold
+
+    text-slate-800
+  "
+>
+          🎯 Interview Question
         </h3>
+<hr className="mb-5 border-slate-200" />
+<div className="mb-4">
 
-        <p className="text-lg leading-8 text-gray-700">
+  <span
+    className="
+      inline-flex
+      items-center
+
+      rounded-full
+
+      bg-blue-100
+
+      px-3
+      py-1
+
+      text-xs
+      font-semibold
+
+      uppercase
+
+      tracking-wide
+
+      text-blue-700
+    "
+  >
+    🤖 AI Recruiter asks
+    
+  </span>
+
+</div>
+<div className="mt-5 flex items-start gap-4">
+
+    <div
+        className="
+            flex
+            h-12
+            w-12
+            sm:h-14
+            sm:w-14
+            items-center
+            justify-center
+
+            rounded-full
+
+            bg-gradient-to-br
+            from-blue-600
+            to-indigo-700
+
+            text-2xl
+
+            text-white
+
+            shadow-md
+        "
+    >
+        🤖
+    </div>
+
+    <div className="flex-1">
+      <div
+    className="
+        rounded-2xl
+
+        bg-blue-50
+
+        p-5
+
+        shadow-sm
+    "
+>
+        <p
+  className="
+    text-lg
+    sm:text-xl
+
+    font-medium
+
+    leading-9
+
+    text-slate-800
+  "
+>
           {description}
         </p>
+</div>
 
+</div>
+
+</div>
       </div>
 
     </section>

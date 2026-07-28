@@ -22,29 +22,66 @@ export default function LiveCoachPanel() {
   return (
 
     <div
-      className={`rounded-2xl border p-5 shadow-sm transition-all ${color}`}
+      className={`
+        rounded-xl
+        lg:rounded-2xl
+
+        border
+
+        p-4
+        sm:p-5
+
+        shadow-sm
+
+        transition-all
+
+        ${color}
+      `}
     >
 
-      <div className="flex items-center gap-3">
+      <div
+        className="
+          flex
+          items-start
+          gap-3
+        "
+      >
 
-        <span className="text-3xl">
+        <div
+          className="
+            text-2xl
+            sm:text-3xl
 
+            shrink-0
+          "
+        >
           🎙
+        </div>
 
-        </span>
+        <div className="flex-1">
 
-        <div>
+          <h3
+            className="
+              text-lg
+              sm:text-xl
 
-          <h3 className="text-xl font-bold">
-
+              font-bold
+            "
+          >
             Live AI Coach
-
           </h3>
 
-          <p className="mt-1">
+          <p
+            className="
+              mt-1
 
+              text-sm
+              sm:text-base
+
+              leading-7
+            "
+          >
             {coach.message}
-
           </p>
 
         </div>

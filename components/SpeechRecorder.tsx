@@ -309,15 +309,55 @@ export default function SpeechRecorder() {
 
   return (
 
-    <div className="mt-10 rounded-xl border bg-white p-6 shadow">
+    <div
+  className="
+    mt-6
+    sm:mt-8
+    lg:mt-10
 
-      <h2 className="mb-6 text-2xl font-bold">
+    rounded-xl
+    lg:rounded-2xl
+
+    border
+
+    bg-white
+
+    p-4
+    sm:p-6
+    lg:p-8
+
+    shadow-md
+    lg:shadow-lg
+  "
+>
+
+      <h2
+  className="
+    mb-5
+
+    text-xl
+    sm:text-2xl
+    lg:text-3xl
+
+    font-bold
+  "
+>
 
         🎤 Speaking Practice
 
       </h2>
 
-      <div className="flex gap-4">
+      <div
+  className="
+    flex
+    flex-col
+
+    gap-3
+
+    sm:flex-row
+    sm:gap-4
+  "
+>
 
         {
 
@@ -329,7 +369,33 @@ export default function SpeechRecorder() {
 
                 onClick={handleStopRecording}
 
-                className="rounded-lg bg-gray-700 px-6 py-3 font-medium text-white hover:bg-gray-800"
+              className="
+w-full
+sm:w-auto
+
+rounded-2xl
+
+bg-gradient-to-r
+from-gray-700
+to-gray-800
+
+px-8
+py-5
+
+text-lg
+font-bold
+
+text-white
+
+shadow-lg
+
+transition-all
+duration-200
+
+hover:scale-105
+
+active:scale-95
+"
 
               >
 
@@ -345,11 +411,38 @@ export default function SpeechRecorder() {
 
                 onClick={handleStartRecording}
 
-                className="rounded-lg bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+                className="
+w-full
+sm:w-auto
+
+rounded-2xl
+
+bg-gradient-to-r
+from-red-500
+to-red-600
+
+px-8
+py-5
+
+text-lg
+font-bold
+
+text-white
+
+shadow-lg
+
+transition-all
+duration-200
+
+hover:scale-105
+hover:shadow-xl
+
+active:scale-95
+"
 
               >
 
-                🎤 Start Recording
+                🎤 Start Speaking
 
               </button>
 
@@ -363,7 +456,36 @@ export default function SpeechRecorder() {
 
           disabled={status === "recording"}
 
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="
+w-full
+sm:w-auto
+
+rounded-2xl
+
+bg-gradient-to-r
+from-blue-500
+to-blue-600
+
+px-8
+py-5
+
+text-lg
+font-semibold
+
+text-white
+
+shadow-lg
+
+transition-all
+duration-200
+
+hover:scale-105
+
+active:scale-95
+
+disabled:opacity-40
+disabled:cursor-not-allowed
+"
 
         >
 
@@ -375,23 +497,151 @@ export default function SpeechRecorder() {
 
       <div className="mt-6">
 
-        <p className="font-semibold text-blue-600">
+  <div className="flex items-center gap-3">
 
-          {statusText[status]}
+    <div
+      className={`
+        h-3
+        w-3
+        rounded-full
+        transition-all
 
-        </p>
+        ${
+          status === "recording"
+            ? "bg-red-500 animate-pulse"
+            : status === "processing"
+            ? "bg-yellow-500 animate-pulse"
+            : status === "finished"
+            ? "bg-green-500"
+            : "bg-blue-500"
+        }
+      `}
+    />
+
+    <p
+      className="
+        text-sm
+        sm:text-base
+
+        font-semibold
+
+        text-blue-700
+      "
+    >
+      {statusText[status]}
+    </p>
+
+  </div>
+
+  {
+    status === "recording" && (
+
+      <div className="mt-4 flex gap-2">
+
+        <span className="h-2 w-2 rounded-full bg-red-500 animate-bounce" />
+
+        <span
+          className="h-2 w-2 rounded-full bg-red-500 animate-bounce"
+          style={{ animationDelay: "0.2s" }}
+        />
+
+        <span
+          className="h-2 w-2 rounded-full bg-red-500 animate-bounce"
+          style={{ animationDelay: "0.4s" }}
+        />
 
       </div>
 
-      <div className="mt-6">
+    )
+  }
 
-        <h3 className="mb-3 text-lg font-semibold">
+  {
+    status === "processing" && (
+
+      <div
+        className="
+          mt-4
+
+          h-2
+          w-full
+
+          overflow-hidden
+
+          rounded-full
+
+          bg-gray-200
+        "
+      >
+
+        <div
+          className="
+            h-full
+            w-1/2
+
+            animate-pulse
+
+            rounded-full
+
+            bg-blue-600
+          "
+        />
+
+      </div>
+
+    )
+  }
+
+</div>
+
+      <div
+  className="
+    mt-6
+    sm:mt-8
+  "
+>
+
+        <h3
+  className="
+    mb-3
+
+    text-base
+    sm:text-lg
+
+    font-semibold
+
+    text-slate-800
+  "
+>
 
           Your Answer
 
         </h3>
 
-        <div className="min-h-[180px] rounded-lg border bg-gray-50 p-4 leading-7">
+        <div
+  className="
+    min-h-[150px]
+sm:min-h-[200px]
+lg:min-h-[220px]
+
+    rounded-xl
+
+    border
+
+    bg-slate-50
+
+    p-4
+    sm:p-5
+    lg:p-6
+
+    leading-7
+
+    overflow-y-auto
+
+    break-words
+
+    transition
+  "
+>
 
           {
 
@@ -399,7 +649,18 @@ export default function SpeechRecorder() {
 
               ? (
 
-                <p className="whitespace-pre-wrap">
+                <p
+  className="
+    whitespace-pre-wrap
+
+    text-[15px]
+    sm:text-base
+
+    leading-7
+
+    text-slate-800
+  "
+>
 
                   {transcript}
 
@@ -409,9 +670,18 @@ export default function SpeechRecorder() {
 
               : (
 
-                <p className="text-gray-400">
+                <p
+  className="
+    text-sm
+    sm:text-base
 
-                  Start speaking...
+    italic
+
+    text-gray-400
+  "
+>
+
+                  Your answer will appear here...
 
                 </p>
 

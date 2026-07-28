@@ -7,6 +7,7 @@ import { HistoryProvider } from "@/context/HistoryContext";
 import { EvaluationProvider } from "@/context/EvaluationContext";
 import { LiveCoachProvider } from "@/context/LiveCoachContext";
 import { SpeechActivityProvider } from "@/context/SpeechActivityContext";
+import { VoiceCoachProvider } from "@/context/VoiceCoachContext";
 import Footer from "@/components/layout/Footer";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -71,7 +72,19 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-   <body className="min-h-screen flex flex-col">
+   <body
+  className="
+    min-h-screen
+    flex
+    flex-col
+    bg-gray-50
+    text-gray-900
+    overflow-x-hidden
+    antialiased
+    selection:bg-blue-200
+    selection:text-blue-900
+  "
+>
 
     <InterviewProvider>
 
@@ -79,13 +92,25 @@ export default function RootLayout({
 
             <SpeechActivityProvider>
 
-                <LiveCoachProvider>
+    <VoiceCoachProvider>
 
-                    <EvaluationProvider>
+        <LiveCoachProvider>
+
+            <EvaluationProvider>
 
                         <HistoryProvider>
 
-                            <main className="flex-1">
+                            <main
+  className="
+    flex-1
+    w-full
+    max-w-screen-2xl
+    mx-auto
+    px-4
+    sm:px-6
+    lg:px-8
+  "
+>
 
                                 {children}
 
@@ -97,9 +122,11 @@ export default function RootLayout({
 
                     </EvaluationProvider>
 
-                </LiveCoachProvider>
+</LiveCoachProvider>
 
-            </SpeechActivityProvider>
+</VoiceCoachProvider>
+
+</SpeechActivityProvider>
 
         </SpeechProvider>
 
