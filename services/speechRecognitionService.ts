@@ -222,13 +222,13 @@ export function createSpeechRecognition(
    * on Samsung Chrome.
    */
 
-  recognition.continuous = false;
+  recognition.continuous = true;
 
   /**
    * Only final transcript.
    */
 
-  recognition.interimResults = false;
+  recognition.interimResults = true;
 
   recognition.maxAlternatives = 1;
 
@@ -268,25 +268,37 @@ export function createSpeechRecognition(
 
     }
 
-    const result =
+    const finalSegments: string[] = [];
 
-      event.results[0];
+    for (
+      let index = event.resultIndex;
+      index < event.results.length;
+      index += 1
+    ) {
 
-    if (!result.length) {
+      const result = event.results[index];
 
-      return;
+      if (!result?.length || !result.isFinal) {
+
+        continue;
+
+      }
+
+      const segment = result[0].transcript.trim();
+
+      if (segment) {
+
+        finalSegments.push(segment);
+
+      }
 
     }
 
-    const transcript =
+    for (const segment of finalSegments) {
 
-      result[0].transcript.trim();
+      callbacks.onResult?.(segment);
 
-    callbacks.onResult?.(
-
-      transcript
-
-    );
+    }
 
   };
 

@@ -9,10 +9,8 @@ import {
   readyInterview,
 } from "@/services/interviewFlowService";
 import InterviewHeader from "./InterviewHeader";
-import InterviewProgress from "./InterviewProgress";
 import InterviewQuestionCard from "./InterviewQuestionCard";
 import InterviewNavigator from "./InterviewNavigator";
-import InterviewStatusBar from "./InterviewStatusBar";
 import AIInterviewer from "./AIInterviewer";
 import WelcomeInterviewer from "./WelcomeInterviewer";
 import ReadyScreen from "./ReadyScreen";
@@ -150,7 +148,6 @@ const [feedbackOpen, setFeedbackOpen] = useState(false);
   "
 >
 
-               <InterviewHeader />
 
         <div
   className="
@@ -253,7 +250,6 @@ const [feedbackOpen, setFeedbackOpen] = useState(false);
 
         <InterviewHeader />
 
-<InterviewStatusBar />
 
 <AIInterviewer />
 
@@ -263,7 +259,6 @@ const [feedbackOpen, setFeedbackOpen] = useState(false);
 
 <VoiceCoach />
 
-<InterviewProgress />
 
         <InterviewQuestionCard
 

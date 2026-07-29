@@ -42,8 +42,10 @@
  */
 
 import {
+  useCallback,
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -53,6 +55,7 @@ import {
 import {
   createSpeechRecognition,
   destroySpeechRecognition,
+  isSpeechRecognitionSupported,
   type BrowserSpeechRecognition,
 } from "@/services/speechRecognitionService";
 
@@ -72,6 +75,9 @@ import {
  */
 
 export default function SpeechRecorder() {
+
+  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
+  const [speechError, setSpeechError] = useState("");
 
   /* ==========================================================
    * Speech Context
@@ -101,6 +107,88 @@ export default function SpeechRecorder() {
     useRef<BrowserSpeechRecognition | null>(
       null
     );
+
+  const shouldKeepRecordingRef = useRef(false);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transcriptRef = useRef("");
+
+  const appendTranscript = useCallback((nextText: string): void => {
+    const cleanText = nextText.trim().replace(/\s+/g, " ");
+
+    if (!cleanText) {
+      return;
+    }
+
+    const capitalizeFirstLetter = (value: string): string => {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    };
+
+    const ensureSentenceEnding = (value: string): string => {
+      return /[.!?]$/.test(value) ? value : `${value}.`;
+    };
+
+    const currentText = transcriptRef.current.trim().replace(/\s+/g, " ");
+    const preparedNextText = capitalizeFirstLetter(cleanText);
+
+    if (!currentText) {
+      transcriptRef.current = preparedNextText;
+      setTranscript(preparedNextText);
+      return;
+    }
+
+    const currentLower = currentText.toLowerCase();
+    const nextLower = preparedNextText.toLowerCase();
+
+    if (currentLower.includes(nextLower)) {
+      return;
+    }
+
+    if (nextLower.includes(currentLower)) {
+      transcriptRef.current = preparedNextText;
+      setTranscript(preparedNextText);
+      return;
+    }
+
+    const currentWords = currentText.split(" ");
+    const nextWords = preparedNextText.split(" ");
+    const maxOverlap = Math.min(currentWords.length, nextWords.length);
+    let overlap = 0;
+
+    for (let size = maxOverlap; size > 0; size -= 1) {
+      const currentTail = currentWords
+        .slice(currentWords.length - size)
+        .join(" ")
+        .replace(/[.!?,]$/g, "")
+        .toLowerCase();
+      const nextHead = nextWords
+        .slice(0, size)
+        .join(" ")
+        .replace(/[.!?,]$/g, "")
+        .toLowerCase();
+
+      if (currentTail === nextHead) {
+        overlap = size;
+        break;
+      }
+    }
+
+    const wordsToAppend = nextWords.slice(overlap);
+
+    if (wordsToAppend.length === 0) {
+      return;
+    }
+
+    const appendedText = wordsToAppend.join(" ");
+
+    // A new browser result after a pause is treated as a new sentence.
+    // When the browser repeats overlapping words, continue the same sentence.
+    const combinedText = overlap > 0
+      ? `${currentText} ${appendedText}`
+      : `${ensureSentenceEnding(currentText)} ${capitalizeFirstLetter(appendedText)}`;
+
+    transcriptRef.current = combinedText;
+    setTranscript(combinedText);
+  }, [setTranscript]);
       /* ==========================================================
    * Initialize Speech Recognition
    * ==========================================================
@@ -108,95 +196,96 @@ export default function SpeechRecorder() {
 
   useEffect(() => {
 
-    const recognition =
-      createSpeechRecognition({
+    if (!isSpeechRecognitionSupported()) {
+      queueMicrotask(() => {
+        setSpeechSupported(false);
+        setSpeechError(
+          "Voice recognition is not supported by this browser. Please type your answer below."
+        );
+      });
+      return;
+    }
 
-        /* ----------------------------------------------
-         * Recognition Started
-         * ---------------------------------------------- */
+    queueMicrotask(() => setSpeechSupported(true));
 
+    let recognition: BrowserSpeechRecognition | null = null;
+
+    try {
+      recognition = createSpeechRecognition({
         onStart: () => {
-
-          console.log(
-            "[SpeechRecorder] Recognition Started"
-          );
-
+          setSpeechError("");
           setStatus("recording");
-
         },
-
-        /* ----------------------------------------------
-         * Recognition Result
-         * ---------------------------------------------- */
-
-        onResult: (
-          text: string
-        ) => {
-
-          setTranscript(text);
-
+        onResult: (text: string) => {
+          appendTranscript(text);
         },
+        onError: (message: string) => {
+          console.error("[SpeechRecorder]", message);
 
-        /* ----------------------------------------------
-         * Recognition Error
-         * ---------------------------------------------- */
+          const isRecoverableSilence =
+            message === "No speech detected." ||
+            message === "Speech recognition aborted.";
 
-        onError: (
-          message: string
-        ) => {
+          if (shouldKeepRecordingRef.current && isRecoverableSilence) {
+            return;
+          }
 
-          console.error(
-            "[SpeechRecorder]",
-            message
-          );
-
+          shouldKeepRecordingRef.current = false;
+          setSpeechError(message);
           setStatus("finished");
-
         },
-
-        /* ----------------------------------------------
-         * Recognition End
-         * ---------------------------------------------- */
-
         onEnd: () => {
+          if (!shouldKeepRecordingRef.current) {
+            setStatus("finished");
+            return;
+          }
 
-          console.log(
-            "[SpeechRecorder] Recognition Ended"
-          );
+          if (restartTimerRef.current) {
+            clearTimeout(restartTimerRef.current);
+          }
 
-          setStatus("finished");
+          restartTimerRef.current = setTimeout(() => {
+            if (!shouldKeepRecordingRef.current || !recognitionRef.current) {
+              return;
+            }
 
+            try {
+              recognitionRef.current.start();
+            } catch (error) {
+              console.warn(
+                "[SpeechRecorder] Recognition restart delayed.",
+                error
+              );
+            }
+          }, 80);
         },
-
       });
 
-    recognitionRef.current =
-      recognition;
-
-    registerRecognition(
-      recognition
-    );
+      recognitionRef.current = recognition;
+      registerRecognition(recognition);
+    } catch (error) {
+      console.error("[SpeechRecorder] Initialization failed", error);
+      queueMicrotask(() => {
+        setSpeechSupported(false);
+        setSpeechError(
+          "Voice recognition could not be started. Please type your answer below."
+        );
+      });
+    }
 
     return () => {
+      shouldKeepRecordingRef.current = false;
+
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
 
       unregisterRecognition();
-
-      destroySpeechRecognition(
-        recognition
-      );
-
-      recognitionRef.current =
-        null;
-
+      destroySpeechRecognition(recognition);
+      recognitionRef.current = null;
     };
-
-  }, [
-
-    setTranscript,
-
-    setStatus,
-
-  ]);
+  }, [appendTranscript, setStatus]);
     /* ==========================================================
    * Event Handlers
    * ==========================================================
@@ -211,21 +300,29 @@ export default function SpeechRecorder() {
       "[SpeechRecorder] Start Button Clicked"
     );
 
-    if (status === "recording") {
+    if (status === "recording" || speechSupported !== true) {
 
       return;
 
     }
 
+    setSpeechError("");
+    transcriptRef.current = "";
     resetSpeech();
+    shouldKeepRecordingRef.current = true;
 
     const started =
       startRecording();
 
     if (!started) {
 
+      shouldKeepRecordingRef.current = false;
+
       console.warn(
         "[SpeechRecorder] Unable to start recording."
+      );
+      setSpeechError(
+        "The microphone could not start. Check microphone permission, then try again."
       );
 
     }
@@ -245,6 +342,21 @@ export default function SpeechRecorder() {
 
       return;
 
+    }
+
+    shouldKeepRecordingRef.current = false;
+
+    const currentText = transcriptRef.current.trim();
+
+    if (currentText && !/[.!?]$/.test(currentText)) {
+      const punctuatedText = `${currentText}.`;
+      transcriptRef.current = punctuatedText;
+      setTranscript(punctuatedText);
+    }
+
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
 
     const stopped =
@@ -269,6 +381,7 @@ export default function SpeechRecorder() {
 
     }
 
+    transcriptRef.current = "";
     resetSpeech();
 
   };
@@ -347,6 +460,12 @@ export default function SpeechRecorder() {
 
       </h2>
 
+      {speechError && (
+        <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          {speechError}
+        </div>
+      )}
+
       <div
   className="
     flex
@@ -410,6 +529,7 @@ active:scale-95
               <button
 
                 onClick={handleStartRecording}
+                disabled={speechSupported !== true}
 
                 className="
 w-full
@@ -438,11 +558,14 @@ hover:scale-105
 hover:shadow-xl
 
 active:scale-95
+
+disabled:cursor-not-allowed
+disabled:opacity-50
 "
 
               >
 
-                🎤 Start Speaking
+                {speechSupported === false ? "⌨️ Voice Unavailable" : "🎤 Start Speaking"}
 
               </button>
 
@@ -691,6 +814,15 @@ lg:min-h-[220px]
 
         </div>
 
+
+        {speechSupported === false && (
+          <textarea
+            value={transcript}
+            onChange={(event) => setTranscript(event.target.value)}
+            placeholder="Type your answer here..."
+            className="mt-4 min-h-40 w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-base leading-7 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          />
+        )}
       </div>
 
     </div>
