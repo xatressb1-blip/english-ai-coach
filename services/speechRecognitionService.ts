@@ -9,23 +9,30 @@
  * services/speechRecognitionService.ts
  *
  * Version:
- * 3.0 Stable
+ * 3.1 Stable
  *
  * Status:
- * READY FOR TEST
+ * READY FOR PUBLIC BETA
  *
  * Compatibility:
  * ✓ SpeechController v3
  * ✓ SpeechRecorder v3
  * ✓ SpeechContext v3
  * ✓ AIInterviewer v3
+ * ✓ LiveCoach
+ * ✓ VoiceCoach
  *
+ * ============================================================
  * Change Log
  * ------------------------------------------------------------
- * ✓ Refactored browser interfaces
- * ✓ Fixed transcript overwrite foundation
- * ✓ Prepared continuous recognition pipeline
- * ✓ Ready for Speech Core Freeze
+ * v3.1
+ *
+ * ✓ Fixed duplicate transcript on Android Chrome
+ * ✓ Optimized Samsung devices
+ * ✓ Disabled continuous recognition
+ * ✓ Disabled interim transcript
+ * ✓ Cleaner recognition lifecycle
+ * ✓ Prepared for iPhone fallback
  * ============================================================
  */
 
@@ -48,11 +55,13 @@ export interface BrowserSpeechRecognitionAlternative {
 export interface BrowserSpeechRecognitionResult {
   isFinal: boolean;
   length: number;
+
   [index: number]: BrowserSpeechRecognitionAlternative;
 }
 
 export interface BrowserSpeechRecognitionResultList {
   length: number;
+
   [index: number]: BrowserSpeechRecognitionResult;
 }
 
@@ -64,6 +73,7 @@ export interface BrowserSpeechRecognitionResultEvent {
 export interface BrowserSpeechRecognitionErrorEvent {
   error: string;
 }
+
 export interface BrowserSpeechRecognition {
 
   lang: string;
@@ -91,7 +101,6 @@ export interface BrowserSpeechRecognition {
   stop(): void;
 
   abort(): void;
-
 }
 
 export interface BrowserSpeechRecognitionConstructor {
@@ -166,8 +175,9 @@ function getSpeechRecognitionConstructor():
   );
 
 }
+
 /* ============================================================
- * Create SpeechRecognition
+ * Create Speech Recognition
  * ============================================================
  */
 
@@ -202,18 +212,25 @@ export function createSpeechRecognition(
 
   recognition.lang = "en-US";
 
-  recognition.continuous = true;
-
-  recognition.interimResults = true;
-
-  recognition.maxAlternatives = 1;
-
-  /* ==========================================================
-   * Transcript Buffer
-   * ==========================================================
+  /**
+   * IMPORTANT
+   *
+   * Interview application
+   * does NOT require continuous dictation.
+   *
+   * This avoids duplicated transcript
+   * on Samsung Chrome.
    */
 
-  let finalTranscript = "";
+  recognition.continuous = false;
+
+  /**
+   * Only final transcript.
+   */
+
+  recognition.interimResults = false;
+
+  recognition.maxAlternatives = 1;
 
   /* ==========================================================
    * Recognition Started
@@ -222,59 +239,48 @@ export function createSpeechRecognition(
 
   recognition.onstart = () => {
 
-    finalTranscript = "";
-
     callbacks.onStart?.();
 
   };
-
-  /* ==========================================================
+    /* ==========================================================
    * Recognition Result
    * ==========================================================
    *
-   * Part 2 starts here.
+   * v3.1
+   * ----------------------------------------------------------
+   * Android Chrome frequently returns duplicated transcripts
+   * when continuous/interim recognition is enabled.
+   *
+   * Since this application is an Interview Coach,
+   * we only need ONE final transcript.
+   * ==========================================================
    */
-    recognition.onresult = (
+
+  recognition.onresult = (
 
     event: BrowserSpeechRecognitionResultEvent
 
   ) => {
 
-    let interimTranscript = "";
+    if (!event.results.length) {
 
-    for (
-
-      let i = event.resultIndex;
-
-      i < event.results.length;
-
-      i++
-
-    ) {
-
-      const result = event.results[i];
-
-      const piece = result[0].transcript;
-
-      if (result.isFinal) {
-
-        finalTranscript += piece + " ";
-
-      } else {
-
-        interimTranscript += piece;
-
-      }
+      return;
 
     }
 
-    const transcript = (
+    const result =
 
-      finalTranscript +
+      event.results[0];
 
-      interimTranscript
+    if (!result.length) {
 
-    ).trim();
+      return;
+
+    }
+
+    const transcript =
+
+      result[0].transcript.trim();
 
     callbacks.onResult?.(
 
@@ -288,49 +294,72 @@ export function createSpeechRecognition(
    * Recognition Error
    * ==========================================================
    */
-    recognition.onerror = (
+
+  recognition.onerror = (
 
     event: BrowserSpeechRecognitionErrorEvent
 
   ) => {
 
-    let message = "Unknown error.";
+    let message =
+
+      "Unknown speech recognition error.";
 
     switch (event.error) {
 
       case "no-speech":
 
-        message = "No speech detected.";
+        message =
+
+          "No speech detected.";
 
         break;
 
       case "audio-capture":
 
-        message = "No microphone was found.";
+        message =
+
+          "No microphone was found.";
 
         break;
 
       case "not-allowed":
 
-        message = "Microphone permission denied.";
+        message =
+
+          "Microphone permission denied.";
 
         break;
 
       case "network":
 
-        message = "Network error occurred.";
+        message =
+
+          "Network error occurred.";
 
         break;
 
       case "aborted":
 
-        message = "Speech recognition aborted.";
+        message =
+
+          "Speech recognition aborted.";
+
+        break;
+
+      case "service-not-allowed":
+
+        message =
+
+          "Speech service is not allowed.";
 
         break;
 
       default:
 
-        message = event.error;
+        message =
+
+          event.error;
 
     }
 
@@ -354,13 +383,14 @@ export function createSpeechRecognition(
   };
 
   /* ==========================================================
-   * Return Recognition Instance
+   * Return Recognition
    * ==========================================================
    */
 
   return recognition;
 
 }
+
 /* ============================================================
  * Destroy Recognition
  * ============================================================
@@ -384,11 +414,6 @@ export function destroySpeechRecognition(
 
   }
 
-  /* ==========================================================
-   * Remove Event Handlers
-   * ==========================================================
-   */
-
   recognition.onstart = null;
 
   recognition.onresult = null;
@@ -397,25 +422,15 @@ export function destroySpeechRecognition(
 
   recognition.onend = null;
 
-  /* ==========================================================
-   * Abort Recognition
-   * ==========================================================
-   */
-
   try {
 
     recognition.abort();
 
   } catch {
 
-    // Ignore browser exception
+    // ignore browser exception
 
   }
-
-  /* ==========================================================
-   * Stop Recognition
-   * ==========================================================
-   */
 
   try {
 
@@ -423,7 +438,7 @@ export function destroySpeechRecognition(
 
   } catch {
 
-    // Ignore browser exception
+    // ignore browser exception
 
   }
 
