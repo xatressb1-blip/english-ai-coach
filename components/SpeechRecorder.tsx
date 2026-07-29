@@ -78,6 +78,8 @@ export default function SpeechRecorder() {
 
   const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
   const [speechError, setSpeechError] = useState("");
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [forceTextInput, setForceTextInput] = useState(false);
 
   /* ==========================================================
    * Speech Context
@@ -196,6 +198,12 @@ export default function SpeechRecorder() {
 
   useEffect(() => {
 
+    const userAgent = window.navigator.userAgent;
+    const iosDevice = /iPad|iPhone|iPod/.test(userAgent) ||
+      (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
+
+    setIsIOSDevice(iosDevice);
+
     if (!isSpeechRecognitionSupported()) {
       queueMicrotask(() => {
         setSpeechSupported(false);
@@ -231,6 +239,23 @@ export default function SpeechRecorder() {
           }
 
           shouldKeepRecordingRef.current = false;
+
+          const serviceBlocked =
+            message === "Speech service is not allowed." ||
+            message === "Microphone permission denied.";
+
+          if (serviceBlocked) {
+            setForceTextInput(true);
+            setSpeechSupported(false);
+            setStatus("ready");
+            setSpeechError(
+              isIOSDevice
+                ? "iPhone Safari could not start Apple speech recognition. Turn off Request Desktop Website for this site, keep Microphone set to Allow, reload the page, and try again. You can type the answer below while voice recognition is unavailable."
+                : message
+            );
+            return;
+          }
+
           setSpeechError(message);
           setStatus("finished");
         },
@@ -285,7 +310,7 @@ export default function SpeechRecorder() {
       destroySpeechRecognition(recognition);
       recognitionRef.current = null;
     };
-  }, [appendTranscript, setStatus]);
+  }, [appendTranscript, isIOSDevice, setStatus]);
     /* ==========================================================
    * Event Handlers
    * ==========================================================
@@ -460,6 +485,15 @@ export default function SpeechRecorder() {
 
       </h2>
 
+      {isIOSDevice && (
+        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          <p className="font-semibold">iPhone / iPad voice setup</p>
+          <p className="mt-1">
+            Use Safari, turn off “Request Desktop Website” for this site, set Microphone to Allow, then reload the page. Speak English after the red recording indicator appears.
+          </p>
+        </div>
+      )}
+
       {speechError && (
         <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
           {speechError}
@@ -565,7 +599,7 @@ disabled:opacity-50
 
               >
 
-                {speechSupported === false ? "⌨️ Voice Unavailable" : "🎤 Start Speaking"}
+                {speechSupported === false ? "⌨️ Type Answer" : "🎤 Start Speaking"}
 
               </button>
 
@@ -815,11 +849,12 @@ lg:min-h-[220px]
         </div>
 
 
-        {speechSupported === false && (
+        {(speechSupported === false || forceTextInput) && (
           <textarea
             value={transcript}
             onChange={(event) => setTranscript(event.target.value)}
             placeholder="Type your answer here..."
+            aria-label="Type your interview answer"
             className="mt-4 min-h-40 w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-base leading-7 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           />
         )}

@@ -3,108 +3,192 @@ type QueueItem = {
   onEnd?: () => void;
 };
 
-class SpeechManager {
+const ENGLISH_LOCALES = ["en-US", "en-GB", "en-AU", "en-CA", "en-IN", "en"];
 
-  private queue: QueueItem[] = [];
+function normaliseLanguage(value: string): string {
+  return value.trim().toLowerCase();
+}
 
-  private speaking = false;
+function isEnglishVoice(voice: SpeechSynthesisVoice): boolean {
+  return normaliseLanguage(voice.lang).startsWith("en");
+}
 
-  private current: SpeechSynthesisUtterance | null = null;
+function getPreferredEnglishVoice(
+  voices: SpeechSynthesisVoice[]
+): SpeechSynthesisVoice | null {
+  const englishVoices = voices.filter(isEnglishVoice);
 
-  speak(text: string, onEnd?: () => void) {
-
-    if (!text.trim()) return;
-
-    this.queue.push({
-      text,
-      onEnd,
-    });
-
-    this.playNext();
-
+  if (englishVoices.length === 0) {
+    return null;
   }
 
-  private playNext() {
+  const priorityNames = [
+    "samantha",
+    "ava",
+    "siri",
+    "google us english",
+    "google uk english female",
+    "microsoft aria",
+    "microsoft jenny",
+    "daniel",
+    "karen",
+  ];
 
-    if (this.speaking) return;
+  for (const preferredName of priorityNames) {
+    const match = englishVoices.find((voice) =>
+      voice.name.toLowerCase().includes(preferredName)
+    );
 
-    if (this.queue.length === 0) return;
+    if (match) {
+      return match;
+    }
+  }
+
+  for (const locale of ENGLISH_LOCALES) {
+    const match = englishVoices.find(
+      (voice) => normaliseLanguage(voice.lang) === locale.toLowerCase()
+    );
+
+    if (match) {
+      return match;
+    }
+  }
+
+  return englishVoices[0];
+}
+
+class SpeechManager {
+  private queue: QueueItem[] = [];
+  private speaking = false;
+  private current: SpeechSynthesisUtterance | null = null;
+  private cachedVoice: SpeechSynthesisVoice | null = null;
+  private voicesReadyPromise: Promise<SpeechSynthesisVoice[]> | null = null;
+
+  speak(text: string, onEnd?: () => void): void {
+    if (!text.trim()) {
+      return;
+    }
+
+    this.queue.push({ text, onEnd });
+    void this.playNext();
+  }
+
+  private async loadVoices(): Promise<SpeechSynthesisVoice[]> {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return [];
+    }
+
+    const availableVoices = window.speechSynthesis.getVoices();
+
+    if (availableVoices.length > 0) {
+      return availableVoices;
+    }
+
+    if (this.voicesReadyPromise) {
+      return this.voicesReadyPromise;
+    }
+
+    this.voicesReadyPromise = new Promise((resolve) => {
+      let finished = false;
+
+      const finish = () => {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+        window.speechSynthesis.removeEventListener("voiceschanged", finish);
+        resolve(window.speechSynthesis.getVoices());
+      };
+
+      window.speechSynthesis.addEventListener("voiceschanged", finish);
+      window.setTimeout(finish, 1500);
+    });
+
+    const voices = await this.voicesReadyPromise;
+    this.voicesReadyPromise = null;
+    return voices;
+  }
+
+  private async getEnglishVoice(): Promise<SpeechSynthesisVoice | null> {
+    if (this.cachedVoice && isEnglishVoice(this.cachedVoice)) {
+      return this.cachedVoice;
+    }
+
+    const voices = await this.loadVoices();
+    this.cachedVoice = getPreferredEnglishVoice(voices);
+    return this.cachedVoice;
+  }
+
+  private async playNext(): Promise<void> {
+    if (this.speaking || this.queue.length === 0) {
+      return;
+    }
 
     const item = this.queue.shift();
 
-    if (!item) return;
+    if (!item || typeof window === "undefined") {
+      return;
+    }
 
     this.speaking = true;
 
-    const utterance =
-      new SpeechSynthesisUtterance(item.text);
+    const utterance = new SpeechSynthesisUtterance(item.text);
+    const englishVoice = await this.getEnglishVoice();
 
-    utterance.lang = "en-US";
-
-    utterance.rate = 1;
-
+    utterance.lang = englishVoice?.lang || "en-US";
+    utterance.voice = englishVoice;
+    utterance.rate = 0.92;
     utterance.pitch = 1;
-
     utterance.volume = 1;
 
     this.current = utterance;
 
     utterance.onstart = () => {
-
-      console.log("🔊", item.text);
-
+      console.log(
+        "[SpeechManager] English voice:",
+        englishVoice?.name || "browser fallback",
+        utterance.lang
+      );
     };
 
     utterance.onend = () => {
-
       this.current = null;
-
       this.speaking = false;
-
       item.onEnd?.();
-
-      this.playNext();
-
+      void this.playNext();
     };
 
-    utterance.onerror = () => {
-
+    utterance.onerror = (event) => {
+      console.error("[SpeechManager] Speech error:", event.error);
       this.current = null;
-
       this.speaking = false;
-
-      this.playNext();
-
+      void this.playNext();
     };
-
-    window.speechSynthesis.speak(utterance);
-
-  }
-
-  stop() {
-
-    this.queue = [];
-
-    this.speaking = false;
-
-    this.current = null;
 
     window.speechSynthesis.cancel();
-
+    window.setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 80);
   }
 
-  clearQueue() {
-
+  stop(): void {
     this.queue = [];
+    this.speaking = false;
+    this.current = null;
 
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
   }
 
-  isSpeaking() {
+  clearQueue(): void {
+    this.queue = [];
+  }
 
+  isSpeaking(): boolean {
     return this.speaking;
-
   }
-
 }
 
 export default new SpeechManager();
