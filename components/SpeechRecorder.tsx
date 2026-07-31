@@ -1,212 +1,235 @@
 "use client";
 
-/**
- * ============================================================
- * English AI Coach
- * ------------------------------------------------------------
- * Module:
- * Speech Recorder
- *
- * File:
- * components/SpeechRecorder.tsx
- *
- * Version:
- * 3.0 Stable
- *
- * Description
- * ------------------------------------------------------------
- * UI Layer of Speech Module.
- *
- * Responsibilities
- * ------------------------------------------------------------
- * • Display transcript
- * • Display recording status
- * • Receive user interaction
- *
- * IMPORTANT
- * ------------------------------------------------------------
- * This component NEVER talks directly to Browser APIs.
- *
- * Browser API
- *      ↓
- * SpeechRecognitionService
- *      ↓
- * SpeechRecognitionManager
- *      ↓
- * SpeechController
- *      ↓
- * SpeechContext
- *      ↓
- * SpeechRecorder (UI)
- * ============================================================
- */
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import {
-  useSpeechContext,
-} from "@/context/SpeechContext";
-
+import { useSpeechContext } from "@/context/SpeechContext";
 import {
   createSpeechRecognition,
   destroySpeechRecognition,
   isSpeechRecognitionSupported,
   type BrowserSpeechRecognition,
 } from "@/services/speechRecognitionService";
-
 import {
   registerRecognition,
   unregisterRecognition,
 } from "@/services/speechRecognitionManager";
-
 import {
   startRecording,
   stopRecording,
 } from "@/services/speechController";
 
-/* ============================================================
- * Component
- * ============================================================
- */
+type RecorderMode = "checking" | "web-speech" | "ios-audio" | "manual";
+
+function isIOSDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return (
+    /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function chooseAudioMimeType(): string {
+  if (typeof MediaRecorder === "undefined") {
+    return "";
+  }
+
+  const candidates = [
+    "audio/mp4",
+    "audio/webm;codecs=opus",
+    "audio/webm",
+  ];
+
+  return (
+    candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) ?? ""
+  );
+}
+
+function extensionFromMimeType(mimeType: string): string {
+  if (mimeType.includes("mp4") || mimeType.includes("aac")) {
+    return "m4a";
+  }
+
+  if (mimeType.includes("ogg")) {
+    return "ogg";
+  }
+
+  return "webm";
+}
 
 export default function SpeechRecorder() {
-
-  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<RecorderMode>("checking");
   const [speechError, setSpeechError] = useState("");
-  const [isIOSDevice, setIsIOSDevice] = useState(false);
-  const [forceTextInput, setForceTextInput] = useState(false);
-
-  /* ==========================================================
-   * Speech Context
-   * ==========================================================
-   */
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   const {
-
     transcript,
-
     setTranscript,
-
     status,
-
     setStatus,
-
     resetSpeech,
-
   } = useSpeechContext();
 
-  /* ==========================================================
-   * Recognition Reference
-   * ==========================================================
-   */
-
-  const recognitionRef =
-    useRef<BrowserSpeechRecognition | null>(
-      null
-    );
-
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const shouldKeepRecordingRef = useRef(false);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptRef = useRef("");
 
-  const appendTranscript = useCallback((nextText: string): void => {
-    const cleanText = nextText.trim().replace(/\s+/g, " ");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    if (!cleanText) {
-      return;
+  const stopRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
+  }, []);
 
-    const capitalizeFirstLetter = (value: string): string => {
-      return value.charAt(0).toUpperCase() + value.slice(1);
-    };
+  const stopMediaStream = useCallback(() => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }, []);
 
-    const ensureSentenceEnding = (value: string): string => {
-      return /[.!?]$/.test(value) ? value : `${value}.`;
-    };
+  const appendTranscript = useCallback(
+    (nextText: string): void => {
+      const cleanText = nextText.trim().replace(/\s+/g, " ");
 
-    const currentText = transcriptRef.current.trim().replace(/\s+/g, " ");
-    const preparedNextText = capitalizeFirstLetter(cleanText);
-
-    if (!currentText) {
-      transcriptRef.current = preparedNextText;
-      setTranscript(preparedNextText);
-      return;
-    }
-
-    const currentLower = currentText.toLowerCase();
-    const nextLower = preparedNextText.toLowerCase();
-
-    if (currentLower.includes(nextLower)) {
-      return;
-    }
-
-    if (nextLower.includes(currentLower)) {
-      transcriptRef.current = preparedNextText;
-      setTranscript(preparedNextText);
-      return;
-    }
-
-    const currentWords = currentText.split(" ");
-    const nextWords = preparedNextText.split(" ");
-    const maxOverlap = Math.min(currentWords.length, nextWords.length);
-    let overlap = 0;
-
-    for (let size = maxOverlap; size > 0; size -= 1) {
-      const currentTail = currentWords
-        .slice(currentWords.length - size)
-        .join(" ")
-        .replace(/[.!?,]$/g, "")
-        .toLowerCase();
-      const nextHead = nextWords
-        .slice(0, size)
-        .join(" ")
-        .replace(/[.!?,]$/g, "")
-        .toLowerCase();
-
-      if (currentTail === nextHead) {
-        overlap = size;
-        break;
+      if (!cleanText) {
+        return;
       }
-    }
 
-    const wordsToAppend = nextWords.slice(overlap);
+      const capitalize = (value: string): string =>
+        value.charAt(0).toUpperCase() + value.slice(1);
+      const endSentence = (value: string): string =>
+        /[.!?]$/.test(value) ? value : `${value}.`;
 
-    if (wordsToAppend.length === 0) {
-      return;
-    }
+      const currentText = transcriptRef.current.trim().replace(/\s+/g, " ");
+      const preparedNextText = capitalize(cleanText);
 
-    const appendedText = wordsToAppend.join(" ");
+      if (!currentText) {
+        transcriptRef.current = preparedNextText;
+        setTranscript(preparedNextText);
+        return;
+      }
 
-    // A new browser result after a pause is treated as a new sentence.
-    // When the browser repeats overlapping words, continue the same sentence.
-    const combinedText = overlap > 0
-      ? `${currentText} ${appendedText}`
-      : `${ensureSentenceEnding(currentText)} ${capitalizeFirstLetter(appendedText)}`;
+      const currentLower = currentText.toLowerCase();
+      const nextLower = preparedNextText.toLowerCase();
 
-    transcriptRef.current = combinedText;
-    setTranscript(combinedText);
-  }, [setTranscript]);
-      /* ==========================================================
-   * Initialize Speech Recognition
-   * ==========================================================
-   */
+      if (currentLower.includes(nextLower)) {
+        return;
+      }
+
+      if (nextLower.includes(currentLower)) {
+        transcriptRef.current = preparedNextText;
+        setTranscript(preparedNextText);
+        return;
+      }
+
+      const currentWords = currentText.split(" ");
+      const nextWords = preparedNextText.split(" ");
+      const maxOverlap = Math.min(currentWords.length, nextWords.length);
+      let overlap = 0;
+
+      for (let size = maxOverlap; size > 0; size -= 1) {
+        const currentTail = currentWords
+          .slice(currentWords.length - size)
+          .join(" ")
+          .replace(/[.!?,]$/g, "")
+          .toLowerCase();
+        const nextHead = nextWords
+          .slice(0, size)
+          .join(" ")
+          .replace(/[.!?,]$/g, "")
+          .toLowerCase();
+
+        if (currentTail === nextHead) {
+          overlap = size;
+          break;
+        }
+      }
+
+      const wordsToAppend = nextWords.slice(overlap);
+
+      if (wordsToAppend.length === 0) {
+        return;
+      }
+
+      const appendedText = wordsToAppend.join(" ");
+      const combinedText =
+        overlap > 0
+          ? `${currentText} ${appendedText}`
+          : `${endSentence(currentText)} ${capitalize(appendedText)}`;
+
+      transcriptRef.current = combinedText;
+      setTranscript(combinedText);
+    },
+    [setTranscript]
+  );
+
+  const transcribeAudio = useCallback(
+    async (audioBlob: Blob): Promise<void> => {
+      if (audioBlob.size < 500) {
+        throw new Error("No audio was captured. Please try again and speak after the microphone becomes active.");
+      }
+
+      const mimeType = audioBlob.type || "audio/mp4";
+      const extension = extensionFromMimeType(mimeType);
+      const formData = new FormData();
+      formData.append(
+        "audio",
+        new File([audioBlob], `interview-answer.${extension}`, { type: mimeType })
+      );
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        transcript?: string;
+        message?: string;
+      };
+
+      if (!response.ok || !data.success || !data.transcript?.trim()) {
+        throw new Error(data.message || "The audio could not be transcribed.");
+      }
+
+      const cleanedTranscript = data.transcript.trim();
+      transcriptRef.current = cleanedTranscript;
+      setTranscript(cleanedTranscript);
+      setStatus("finished");
+    },
+    [setStatus, setTranscript]
+  );
 
   useEffect(() => {
+    const ios = isIOSDevice();
 
-    const userAgent = window.navigator.userAgent;
-    const iosDevice = /iPad|iPhone|iPod/.test(userAgent) ||
-      (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
+    if (ios) {
+      const canRecord = Boolean(
+        navigator.mediaDevices &&
+          typeof MediaRecorder !== "undefined"
+      );
 
-    setIsIOSDevice(iosDevice);
+      queueMicrotask(() => {
+        setMode(canRecord ? "ios-audio" : "manual");
+        if (!canRecord) {
+          setSpeechError(
+            "Audio recording is not supported by this browser. Please type your answer below."
+          );
+        }
+      });
+      return;
+    }
 
     if (!isSpeechRecognitionSupported()) {
       queueMicrotask(() => {
-        setSpeechSupported(false);
+        setMode("manual");
         setSpeechError(
           "Voice recognition is not supported by this browser. Please type your answer below."
         );
@@ -214,8 +237,7 @@ export default function SpeechRecorder() {
       return;
     }
 
-    queueMicrotask(() => setSpeechSupported(true));
-
+    queueMicrotask(() => setMode("web-speech"));
     let recognition: BrowserSpeechRecognition | null = null;
 
     try {
@@ -224,38 +246,17 @@ export default function SpeechRecorder() {
           setSpeechError("");
           setStatus("recording");
         },
-        onResult: (text: string) => {
-          appendTranscript(text);
-        },
+        onResult: appendTranscript,
         onError: (message: string) => {
-          console.error("[SpeechRecorder]", message);
-
-          const isRecoverableSilence =
+          const recoverable =
             message === "No speech detected." ||
             message === "Speech recognition aborted.";
 
-          if (shouldKeepRecordingRef.current && isRecoverableSilence) {
+          if (shouldKeepRecordingRef.current && recoverable) {
             return;
           }
 
           shouldKeepRecordingRef.current = false;
-
-          const serviceBlocked =
-            message === "Speech service is not allowed." ||
-            message === "Microphone permission denied.";
-
-          if (serviceBlocked) {
-            setForceTextInput(true);
-            setSpeechSupported(false);
-            setStatus("ready");
-            setSpeechError(
-              isIOSDevice
-                ? "iPhone Safari could not start Apple speech recognition. Turn off Request Desktop Website for this site, keep Microphone set to Allow, reload the page, and try again. You can type the answer below while voice recognition is unavailable."
-                : message
-            );
-            return;
-          }
-
           setSpeechError(message);
           setStatus("finished");
         },
@@ -277,10 +278,7 @@ export default function SpeechRecorder() {
             try {
               recognitionRef.current.start();
             } catch (error) {
-              console.warn(
-                "[SpeechRecorder] Recognition restart delayed.",
-                error
-              );
+              console.warn("[SpeechRecorder] Recognition restart delayed.", error);
             }
           }, 80);
         },
@@ -291,7 +289,7 @@ export default function SpeechRecorder() {
     } catch (error) {
       console.error("[SpeechRecorder] Initialization failed", error);
       queueMicrotask(() => {
-        setSpeechSupported(false);
+        setMode("manual");
         setSpeechError(
           "Voice recognition could not be started. Please type your answer below."
         );
@@ -300,35 +298,110 @@ export default function SpeechRecorder() {
 
     return () => {
       shouldKeepRecordingRef.current = false;
-
       if (restartTimerRef.current) {
         clearTimeout(restartTimerRef.current);
-        restartTimerRef.current = null;
       }
-
       unregisterRecognition();
       destroySpeechRecognition(recognition);
       recognitionRef.current = null;
     };
-  }, [appendTranscript, isIOSDevice, setStatus]);
-    /* ==========================================================
-   * Event Handlers
-   * ==========================================================
-   */
+  }, [appendTranscript, setStatus]);
 
-  /**
-   * Start Recording
-   */
-  const handleStartRecording = (): void => {
+  useEffect(() => {
+    return () => {
+      stopRecordingTimer();
+      stopMediaStream();
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      }
+    };
+  }, [stopMediaStream, stopRecordingTimer]);
 
-    console.log(
-      "[SpeechRecorder] Start Button Clicked"
-    );
+  const startIOSRecording = async (): Promise<void> => {
+    setSpeechError("");
+    transcriptRef.current = "";
+    resetSpeech();
+    audioChunksRef.current = [];
+    setRecordingSeconds(0);
 
-    if (status === "recording" || speechSupported !== true) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
 
+      mediaStreamRef.current = stream;
+      const mimeType = chooseAudioMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        stopRecordingTimer();
+        stopMediaStream();
+        setStatus("finished");
+        setSpeechError("Safari could not record audio. Please check microphone permission and try again.");
+      };
+
+      recorder.onstop = async () => {
+        stopRecordingTimer();
+        stopMediaStream();
+        const blob = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || mimeType || "audio/mp4",
+        });
+
+        try {
+          await transcribeAudio(blob);
+        } catch (error) {
+          console.error("[SpeechRecorder] Audio transcription failed", error);
+          setStatus("finished");
+          setSpeechError(
+            error instanceof Error
+              ? error.message
+              : "The audio could not be transcribed. Please try again or type your answer."
+          );
+        }
+      };
+
+      recorder.start(1000);
+      setStatus("recording");
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((seconds) => seconds + 1);
+      }, 1000);
+    } catch (error) {
+      console.error("[SpeechRecorder] getUserMedia failed", error);
+      stopMediaStream();
+      setStatus("ready");
+      setSpeechError(
+        "The microphone did not start. In Safari, open Website Settings, set Microphone to Allow, then reload the page."
+      );
+    }
+  };
+
+  const handleStartRecording = async (): Promise<void> => {
+    if (status === "recording" || status === "processing") {
       return;
+    }
 
+    if (mode === "ios-audio") {
+      await startIOSRecording();
+      return;
+    }
+
+    if (mode !== "web-speech") {
+      return;
     }
 
     setSpeechError("");
@@ -336,41 +409,33 @@ export default function SpeechRecorder() {
     resetSpeech();
     shouldKeepRecordingRef.current = true;
 
-    const started =
-      startRecording();
-
-    if (!started) {
-
+    if (!startRecording()) {
       shouldKeepRecordingRef.current = false;
-
-      console.warn(
-        "[SpeechRecorder] Unable to start recording."
-      );
       setSpeechError(
         "The microphone could not start. Check microphone permission, then try again."
       );
-
     }
-
   };
 
-  /**
-   * Stop Recording
-   */
   const handleStopRecording = (): void => {
-
-    console.log(
-      "[SpeechRecorder] Stop Button Clicked"
-    );
-
     if (status !== "recording") {
-
       return;
+    }
 
+    if (mode === "ios-audio") {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        setStatus("finished");
+        setSpeechError("The recorder was not active. Please try again.");
+        return;
+      }
+
+      setStatus("processing");
+      recorder.stop();
+      return;
     }
 
     shouldKeepRecordingRef.current = false;
-
     const currentText = transcriptRef.current.trim();
 
     if (currentText && !/[.!?]$/.test(currentText)) {
@@ -384,484 +449,151 @@ export default function SpeechRecorder() {
       restartTimerRef.current = null;
     }
 
-    const stopped =
-      stopRecording();
-
-    if (stopped) {
-
+    if (stopRecording()) {
       setStatus("processing");
-
     }
-
   };
 
-  /**
-   * Clear Transcript
-   */
   const handleClearTranscript = (): void => {
-
-    if (status === "recording") {
-
+    if (status === "recording" || status === "processing") {
       return;
-
     }
 
     transcriptRef.current = "";
+    setSpeechError("");
     resetSpeech();
-
   };
 
-  /* ==========================================================
-   * Status Text
-   * ==========================================================
-   */
+  const canUseVoice = mode === "web-speech" || mode === "ios-audio";
+  const showManualInput = mode === "manual" || Boolean(speechError && mode === "ios-audio");
 
-  const statusText: Record<
-
-    "ready" |
-    "recording" |
-    "processing" |
-    "finished",
-
-    string
-
-  > = {
-
-    ready:
-      "🎤 Ready to practice",
-
+  const statusText = {
+    ready: mode === "ios-audio" ? "🎤 Ready to record on iPhone" : "🎤 Ready to practice",
     recording:
-      "🔴 Recording...",
-
+      mode === "ios-audio"
+        ? `🔴 Microphone active • ${recordingSeconds}s`
+        : "🔴 Recording...",
     processing:
-      "🤖 AI is evaluating...",
-
-    finished:
-      "✅ Recording completed",
-
-  };
-    /* ==========================================================
-   * UI
-   * ==========================================================
-   */
+      mode === "ios-audio"
+        ? "🤖 Converting your English audio to text..."
+        : "🤖 Processing your answer...",
+    finished: "✅ Recording completed",
+  }[status];
 
   return (
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:mt-8 sm:p-6 lg:mt-10 lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl lg:text-3xl">
+          🎤 Speaking Practice
+        </h2>
+        {mode === "ios-audio" && (
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+            iPhone audio mode
+          </span>
+        )}
+      </div>
 
-    <div
-  className="
-    mt-6
-    sm:mt-8
-    lg:mt-10
-
-    rounded-xl
-    lg:rounded-2xl
-
-    border
-
-    bg-white
-
-    p-4
-    sm:p-6
-    lg:p-8
-
-    shadow-md
-    lg:shadow-lg
-  "
->
-
-      <h2
-  className="
-    mb-5
-
-    text-xl
-    sm:text-2xl
-    lg:text-3xl
-
-    font-bold
-  "
->
-
-        🎤 Speaking Practice
-
-      </h2>
-
-      {isIOSDevice && (
-        <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-          <p className="font-semibold">iPhone / iPad voice setup</p>
-          <p className="mt-1">
-            Use Safari, turn off “Request Desktop Website” for this site, set Microphone to Allow, then reload the page. Speak English after the red recording indicator appears.
-          </p>
-        </div>
+      {mode === "ios-audio" && (
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          Safari records your voice first. After you press Stop Recording, the audio is sent securely to the server and converted to English text.
+        </p>
       )}
 
       {speechError && (
-        <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
           {speechError}
         </div>
       )}
 
-      <div
-  className="
-    flex
-    flex-col
-
-    gap-3
-
-    sm:flex-row
-    sm:gap-4
-  "
->
-
-        {
-
-          status === "recording"
-
-            ? (
-
-              <button
-
-                onClick={handleStopRecording}
-
-              className="
-w-full
-sm:w-auto
-
-rounded-2xl
-
-bg-gradient-to-r
-from-gray-700
-to-gray-800
-
-px-8
-py-5
-
-text-lg
-font-bold
-
-text-white
-
-shadow-lg
-
-transition-all
-duration-200
-
-hover:scale-105
-
-active:scale-95
-"
-
-              >
-
-                ⏹ Stop Recording
-
-              </button>
-
-            )
-
-            : (
-
-              <button
-
-                onClick={handleStartRecording}
-                disabled={speechSupported !== true}
-
-                className="
-w-full
-sm:w-auto
-
-rounded-2xl
-
-bg-gradient-to-r
-from-red-500
-to-red-600
-
-px-8
-py-5
-
-text-lg
-font-bold
-
-text-white
-
-shadow-lg
-
-transition-all
-duration-200
-
-hover:scale-105
-hover:shadow-xl
-
-active:scale-95
-
-disabled:cursor-not-allowed
-disabled:opacity-50
-"
-
-              >
-
-                {speechSupported === false ? "⌨️ Type Answer" : "🎤 Start Speaking"}
-
-              </button>
-
-            )
-
-        }
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:gap-4">
+        {status === "recording" ? (
+          <button
+            type="button"
+            onClick={handleStopRecording}
+            className="w-full rounded-2xl bg-slate-800 px-8 py-5 text-lg font-bold text-white shadow-lg transition active:scale-95 sm:w-auto"
+          >
+            ⏹ Stop Recording
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleStartRecording}
+            disabled={!canUseVoice || status === "processing"}
+            className="w-full rounded-2xl bg-gradient-to-r from-red-500 to-red-600 px-8 py-5 text-lg font-bold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          >
+            {mode === "manual"
+              ? "⌨️ Voice Unavailable"
+              : mode === "checking"
+                ? "Checking microphone..."
+                : "🎤 Start Recording"}
+          </button>
+        )}
 
         <button
-
+          type="button"
           onClick={handleClearTranscript}
-
-          disabled={status === "recording"}
-
-          className="
-w-full
-sm:w-auto
-
-rounded-2xl
-
-bg-gradient-to-r
-from-blue-500
-to-blue-600
-
-px-8
-py-5
-
-text-lg
-font-semibold
-
-text-white
-
-shadow-lg
-
-transition-all
-duration-200
-
-hover:scale-105
-
-active:scale-95
-
-disabled:opacity-40
-disabled:cursor-not-allowed
-"
-
+          disabled={status === "recording" || status === "processing"}
+          className="w-full rounded-2xl bg-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
         >
-
           🗑 Clear
-
         </button>
-
       </div>
 
       <div className="mt-6">
-
-  <div className="flex items-center gap-3">
-
-    <div
-      className={`
-        h-3
-        w-3
-        rounded-full
-        transition-all
-
-        ${
-          status === "recording"
-            ? "bg-red-500 animate-pulse"
-            : status === "processing"
-            ? "bg-yellow-500 animate-pulse"
-            : status === "finished"
-            ? "bg-green-500"
-            : "bg-blue-500"
-        }
-      `}
-    />
-
-    <p
-      className="
-        text-sm
-        sm:text-base
-
-        font-semibold
-
-        text-blue-700
-      "
-    >
-      {statusText[status]}
-    </p>
-
-  </div>
-
-  {
-    status === "recording" && (
-
-      <div className="mt-4 flex gap-2">
-
-        <span className="h-2 w-2 rounded-full bg-red-500 animate-bounce" />
-
-        <span
-          className="h-2 w-2 rounded-full bg-red-500 animate-bounce"
-          style={{ animationDelay: "0.2s" }}
-        />
-
-        <span
-          className="h-2 w-2 rounded-full bg-red-500 animate-bounce"
-          style={{ animationDelay: "0.4s" }}
-        />
-
-      </div>
-
-    )
-  }
-
-  {
-    status === "processing" && (
-
-      <div
-        className="
-          mt-4
-
-          h-2
-          w-full
-
-          overflow-hidden
-
-          rounded-full
-
-          bg-gray-200
-        "
-      >
-
-        <div
-          className="
-            h-full
-            w-1/2
-
-            animate-pulse
-
-            rounded-full
-
-            bg-blue-600
-          "
-        />
-
-      </div>
-
-    )
-  }
-
-</div>
-
-      <div
-  className="
-    mt-6
-    sm:mt-8
-  "
->
-
-        <h3
-  className="
-    mb-3
-
-    text-base
-    sm:text-lg
-
-    font-semibold
-
-    text-slate-800
-  "
->
-
-          Your Answer
-
-        </h3>
-
-        <div
-  className="
-    min-h-[150px]
-sm:min-h-[200px]
-lg:min-h-[220px]
-
-    rounded-xl
-
-    border
-
-    bg-slate-50
-
-    p-4
-    sm:p-5
-    lg:p-6
-
-    leading-7
-
-    overflow-y-auto
-
-    break-words
-
-    transition
-  "
->
-
-          {
-
-            transcript.trim().length > 0
-
-              ? (
-
-                <p
-  className="
-    whitespace-pre-wrap
-
-    text-[15px]
-    sm:text-base
-
-    leading-7
-
-    text-slate-800
-  "
->
-
-                  {transcript}
-
-                </p>
-
-              )
-
-              : (
-
-                <p
-  className="
-    text-sm
-    sm:text-base
-
-    italic
-
-    text-gray-400
-  "
->
-
-                  Your answer will appear here...
-
-                </p>
-
-              )
-
-          }
-
+        <div className="flex items-center gap-3">
+          <div
+            className={`h-3 w-3 rounded-full ${
+              status === "recording"
+                ? "animate-pulse bg-red-500"
+                : status === "processing"
+                  ? "animate-pulse bg-yellow-500"
+                  : status === "finished"
+                    ? "bg-green-500"
+                    : "bg-blue-500"
+            }`}
+          />
+          <p className="text-sm font-semibold text-blue-700 sm:text-base">
+            {statusText}
+          </p>
         </div>
 
+        {status === "processing" && (
+          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-blue-600" />
+          </div>
+        )}
+      </div>
 
-        {(speechSupported === false || forceTextInput) && (
+      <div className="mt-6 sm:mt-8">
+        <h3 className="mb-3 text-base font-semibold text-slate-800 sm:text-lg">
+          Your Answer
+        </h3>
+        <div className="min-h-[150px] overflow-y-auto break-words rounded-xl border border-slate-200 bg-slate-50 p-4 leading-7 sm:min-h-[200px] sm:p-5 lg:min-h-[220px] lg:p-6">
+          {transcript.trim() ? (
+            <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800 sm:text-base">
+              {transcript}
+            </p>
+          ) : (
+            <p className="text-sm italic text-slate-400 sm:text-base">
+              {status === "processing"
+                ? "Please wait while your audio is converted to text..."
+                : "Your answer will appear here..."}
+            </p>
+          )}
+        </div>
+
+        {showManualInput && (
           <textarea
             value={transcript}
-            onChange={(event) => setTranscript(event.target.value)}
-            placeholder="Type your answer here..."
-            aria-label="Type your interview answer"
+            onChange={(event) => {
+              transcriptRef.current = event.target.value;
+              setTranscript(event.target.value);
+            }}
+            placeholder="Type your answer here if voice recording is unavailable..."
             className="mt-4 min-h-40 w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-base leading-7 text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           />
         )}
       </div>
-
-    </div>
-
+    </section>
   );
-
 }
