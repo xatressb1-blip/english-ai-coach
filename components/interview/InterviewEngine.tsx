@@ -3,16 +3,11 @@
 import { useState } from "react";
 
 import { useInterviewContext } from "@/context/InterviewContext";
-
-import {
-  InterviewState,
-  readyInterview,
-} from "@/services/interviewFlowService";
-import InterviewHeader from "./InterviewHeader";
-import InterviewQuestionCard from "./InterviewQuestionCard";
+import { InterviewState, readyInterview } from "@/services/interviewFlowService";
 import InterviewNavigator from "./InterviewNavigator";
+import InterviewProgress from "./InterviewProgress";
+import InterviewStatusBar from "./InterviewStatusBar";
 import AIInterviewer from "./AIInterviewer";
-import WelcomeInterviewer from "./WelcomeInterviewer";
 import ReadyScreen from "./ReadyScreen";
 import SpeechRecorder from "../SpeechRecorder";
 import AIEvaluation from "../evaluation/AIEvaluation";
@@ -21,96 +16,43 @@ import VoiceCoach from "./VoiceCoach";
 import VoiceCoachBubble from "./VoiceCoachBubble";
 import FeedbackButton from "../feedback/FeedbackButton";
 import FeedbackDialog from "../feedback/FeedbackDialog";
+import VirtualInterviewLobby from "./VirtualInterviewLobby";
+import RecruiterStage from "./RecruiterStage";
+import InterviewCompletion from "./InterviewCompletion";
+
 export default function InterviewEngine() {
-const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [enteredRoom, setEnteredRoom] = useState(false);
+
   const {
-
     currentQuestion,
-
     currentQuestionIndex,
-
     totalQuestions,
-
     interviewFinished,
-
     flow,
-
     setFlow,
-
     startQuestion,
-
   } = useInterviewContext();
 
-  const [
-
-    welcomeFinished,
-
-    setWelcomeFinished,
-
-  ] = useState(false);
-
-  /**
-   * Welcome Screen
-   */
-  if (!welcomeFinished) {
-
+  if (!enteredRoom) {
     return (
-
-      <div
-  className="
-    mx-auto
-
-    w-full
-
-    max-w-3xl
-    lg:max-w-5xl
-
-    px-2
-    sm:px-4
-    lg:px-0
-  "
->
-
-        <WelcomeInterviewer
-
-          totalQuestions={totalQuestions}
-
-          onFinished={() => {
-
-            setWelcomeFinished(true);
-
-            setFlow(
-
-              readyInterview()
-
-            );
-
-          }}
-
-        />
-
-      </div>
-
+      <VirtualInterviewLobby
+        totalQuestions={totalQuestions}
+        onEnter={() => {
+          setEnteredRoom(true);
+          setFlow(readyInterview());
+        }}
+      />
     );
-
   }
 
-   /**
-   * Ready Screen
-   */
+  if (interviewFinished) {
+    return <InterviewCompletion />;
+  }
 
   if (flow.state === InterviewState.READY) {
     return (
-      <div
-  className="
-    mx-auto
-    w-full
-    max-w-5xl
-    px-2
-    sm:px-4
-    lg:px-0
-  "
->
+      <div className="mx-auto w-full max-w-5xl">
         <ReadyScreen
           current={currentQuestionIndex + 1}
           total={totalQuestions}
@@ -119,177 +61,33 @@ const [feedbackOpen, setFeedbackOpen] = useState(false);
       </div>
     );
   }
-  
-   /**
-   * Interview Finished
-   */
-
-  if (interviewFinished) {
-
-    return (
-
-      <div
-  className="
-    mx-auto
-    w-full
-    max-w-5xl
-
-    rounded-xl
-    lg:rounded-2xl
-
-    bg-white
-
-    p-4
-    sm:p-6
-    lg:p-10
-
-    shadow-md
-    lg:shadow-xl
-  "
->
-
-
-        <div
-  className="
-    mt-6
-    lg:mt-8
-
-    rounded-xl
-
-    border
-    border-green-300
-
-    bg-green-50
-
-    p-5
-    sm:p-8
-    lg:p-10
-
-    text-center
-  "
->
-
-          <h2
-  className="
-    text-2xl
-    sm:text-3xl
-    lg:text-4xl
-
-    font-bold
-    text-green-700
-  "
->
-
-            🎉 Interview Completed
-
-          </h2>
-
-          <p
-  className="
-    mt-4
-    lg:mt-5
-
-    text-base
-    lg:text-lg
-
-    text-gray-700
-  "
->
-
-            Congratulations!
-
-          </p>
-
-          <p className="mt-2 text-gray-600">
-
-            You have successfully completed all interview questions.
-
-          </p>
-
-        </div>
-
-      </div>
-
-    );
-
-  }
-
-  /**
-   * Main Interview Screen
-   */
 
   return (
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <RecruiterStage />
 
-    <div
-  className="
-    mx-auto
-    w-full
-    max-w-5xl
+      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-xl sm:p-6 lg:p-8">
+        <AIInterviewer />
+        <VoiceCoachBubble />
 
-    rounded-xl
-    lg:rounded-2xl
+        <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
+          <InterviewStatusBar />
+          <InterviewProgress />
+        </div>
 
-    bg-white
-
-    p-4
-    sm:p-6
-    lg:p-10
-
-    shadow-md
-    lg:shadow-xl
-  "
->
-
-      <div
-  className="
-    space-y-5
-    sm:space-y-6
-    lg:space-y-8
-  "
->
-
-        <InterviewHeader />
-
-
-<AIInterviewer />
-
-<VoiceCoachBubble />
-
-<LiveCoachPanel />
-
-<VoiceCoach />
-
-
-        <InterviewQuestionCard
-
-          title={currentQuestion.title}
-
-          description={currentQuestion.description}
-
-          category={currentQuestion.category}
-
-          level={currentQuestion.level}
-
-          duration={currentQuestion.duration}
-
-        />
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          <strong>Interview rule:</strong> answer in your own words. The model answer is intentionally hidden in Mock Interview mode.
+        </div>
 
         <SpeechRecorder />
-        
-         <AIEvaluation />
+        <AIEvaluation question={currentQuestion} />
+        <LiveCoachPanel />
+        <VoiceCoach />
         <InterviewNavigator />
       </div>
-         <FeedbackButton
-        onClick={() => setFeedbackOpen(true)}
-      />
 
-      <FeedbackDialog
-        open={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-      />
-
+      <FeedbackButton onClick={() => setFeedbackOpen(true)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
-
   );
-
 }
