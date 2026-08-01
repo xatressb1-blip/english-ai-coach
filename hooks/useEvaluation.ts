@@ -53,7 +53,7 @@ export function useEvaluation() {
 
       setError(
 
-        "Please record your answer before asking AI to evaluate."
+        "Please enter or record your answer before asking AI to evaluate."
 
       );
 
@@ -67,7 +67,7 @@ export function useEvaluation() {
 
       const evaluation = await evaluateInterview(
 
-        currentQuestion.title,
+        currentQuestion,
 
         transcript
 

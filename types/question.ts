@@ -5,4 +5,7 @@ export interface Question {
   description: string;
   level: string;
   duration: number;
+  sampleAnswer: string;
+  keywords?: string[];
+  grammarFocus?: string[];
 }

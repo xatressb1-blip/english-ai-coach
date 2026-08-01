@@ -1,477 +1,198 @@
-/**
- * ============================================================
- * English AI Coach Platform
- * ------------------------------------------------------------
- * Module:
- * Evaluation Service
- *
- * File:
- * services/evaluationService.ts
- *
- * Version:
- * 2.0 Stable
- *
- * Status:
- * Development
- *
- * Description
- * ------------------------------------------------------------
- * Main orchestrator of interview evaluation.
- *
- * Responsibilities
- *
- * ✓ Validate transcript
- * ✓ Analyse answer focus
- * ✓ Generate coaching advice
- * ✓ Request Gemini evaluation
- * ✓ Merge all evaluation modules
- * ✓ Calculate overall score
- *
- * ============================================================
- */
-
 import {
   EvaluationResult,
   ScoreDetail,
   GrammarResult,
   calculateOverall,
 } from "@/types/evaluation";
+import { InterviewQuestion } from "@/types/InterviewQuestion";
+import { analyzeFocus } from "./focusAnalyzer";
 
-import {
+const REQUEST_TIMEOUT = 30000;
 
-  analyzeFocus,
-
-} from "./focusAnalyzer";
-
-import {
-
-  coachQuestion,
-
-} from "./questionCoach";
-
-/* ============================================================
- * Timeout
- * ============================================================
- */
-
-const REQUEST_TIMEOUT = 20000;
-
-/* ============================================================
- * Validation
- * ============================================================
- */
-
-function validateTranscript(
-
-  transcript: string
-
-) {
-
+function validateTranscript(transcript: string) {
   if (!transcript.trim()) {
-
-    throw new Error(
-
-      "Please record your answer first."
-
-    );
-
+    throw new Error("Please record your answer first.");
   }
-
 }
 
-/* ============================================================
- * Safe Fetch
- * ============================================================
- */
-
 async function requestEvaluation(
-
+  question: InterviewQuestion,
   transcript: string
-
 ) {
-
-  const controller =
-
-    new AbortController();
-
-  const timeout =
-
-    setTimeout(() => {
-
-      controller.abort();
-
-    }, REQUEST_TIMEOUT);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-
-    const response =
-
-      await fetch("/api/evaluate", {
-
-        method: "POST",
-
-        headers: {
-
-          "Content-Type": "application/json",
-
+    const response = await fetch("/api/evaluate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript,
+        question: {
+          id: question.id,
+          title: question.title,
+          description: question.description,
+          level: question.level,
+          keywords: question.keywords,
+          grammarFocus: question.grammarFocus,
+          vocabularyLevel: question.vocabularyLevel,
+          sampleAnswer: question.sampleAnswer,
+          commonMistakes: question.commonMistakes,
         },
-
-        body: JSON.stringify({
-
-          prompt: transcript,
-
-        }),
-
-        signal: controller.signal,
-
-      });
+      }),
+      signal: controller.signal,
+    });
 
     let data: any = {};
 
     try {
-
       data = await response.json();
-
+    } catch {
+      throw new Error("Invalid server response.");
     }
 
-    catch {
-
-      throw new Error(
-
-        "Invalid server response."
-
-      );
-
-    }
-
-    if (!response.ok) {
-
-      throw new Error(
-
-        data.message ??
-
-        "Failed to evaluate interview."
-
-      );
-
-    }
-
-    if (!data.success) {
-
-      throw new Error(
-
-        data.message ??
-
-        "Evaluation failed."
-
-      );
-
+    if (!response.ok || !data.success) {
+      throw new Error(data.message ?? "Failed to evaluate interview.");
     }
 
     if (!data.result) {
-
-      throw new Error(
-
-        "No evaluation result received."
-
-      );
-
+      throw new Error("No evaluation result received.");
     }
 
     return data.result;
-
-  }
-
-  catch (error: any) {
-
-    if (
-
-      error.name === "AbortError"
-
-    ) {
-
-      throw new Error(
-
-        "Gemini request timeout. Please try again."
-
-      );
-
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("Gemini request timeout. Please try again.");
     }
 
     throw error;
-
-  }
-
-  finally {
-
+  } finally {
     clearTimeout(timeout);
+  }
+}
 
+function clampScore(value: unknown): number {
+  const score = Number(value ?? 0);
+
+  if (!Number.isFinite(score)) {
+    return 0;
   }
 
+  return Math.max(0, Math.min(10, score));
 }
 
-/* ============================================================
- * Builders
- * ============================================================
- */
-
-function buildGrammar(
-  result: any
-): GrammarResult {
-
+function buildGrammar(result: any): GrammarResult {
   return {
-
-    score:
-
-      Number(result.grammar ?? 0),
-
-    comment:
-
-      result.grammarComment ?? "",
-
-    mistakes:
-
-      Array.isArray(result.mistakes)
-
-        ? result.mistakes
-
-        : [],
-
+    score: clampScore(result.grammar),
+    comment: result.grammarComment ?? "",
+    mistakes: Array.isArray(result.mistakes) ? result.mistakes : [],
   };
-
 }
 
-function buildVocabulary(
-
-  result: any
-
+function buildScore(
+  score: unknown,
+  comment: unknown
 ): ScoreDetail {
-
   return {
-
-    score:
-
-      Number(result.vocabulary ?? 0),
-
-    comment:
-
-      result.vocabularyComment ?? "",
-
+    score: clampScore(score),
+    comment: typeof comment === "string" ? comment : "",
   };
-
 }
-
-function buildPronunciation(
-
-  result: any
-
-): ScoreDetail {
-
-  return {
-
-    score:
-
-      Number(result.pronunciation ?? 0),
-
-    comment:
-
-      result.pronunciationComment ?? "",
-
-  };
-
-}
-function buildFluency(
-  result: any
-): ScoreDetail {
-
-  return {
-    score:
-      Number(result.fluency ?? 0),
-
-    comment:
-      result.fluencyComment ?? "",
-  };
-
-}
-
-function buildRelevance(
-  result: any
-): ScoreDetail {
-
-  return {
-    score:
-      Number(result.relevance ?? 0),
-
-    comment:
-      result.relevanceComment ?? "",
-  };
-
-}
-
-function buildConfidence(
-  result: any
-): ScoreDetail {
-
-  return {
-    score:
-      Number(result.confidence ?? 0),
-
-    comment:
-      result.confidenceComment ?? "",
-  };
-
-}
-
-/* ============================================================
- * Evaluation Builder
- * ============================================================
- */
 
 function buildEvaluation(
-
   result: any,
-
   focusAnalysis: ReturnType<typeof analyzeFocus>,
-
-  coach: ReturnType<typeof coachQuestion>
-
+  coach: EvaluationResult["coach"]
 ): EvaluationResult {
-
   return {
-
     overall: 0,
-
-    overallFeedback:
-
-      result.overallFeedback ?? "",
-
-    grammar:
-
-      buildGrammar(result),
-
-    vocabulary:
-
-      buildVocabulary(result),
-
-    pronunciation:
-
-      buildPronunciation(result),
-
-    fluency:
-
-      buildFluency(result),
-
-    relevance:
-
-      buildRelevance(result),
-
-    confidence:
-
-      buildConfidence(result),
-
-    suggestions:
-
-      Array.isArray(result.suggestions)
-
-        ? result.suggestions
-
-        : [],
-
+    overallFeedback: result.overallFeedback ?? "",
+    grammar: buildGrammar(result),
+    vocabulary: buildScore(result.vocabulary, result.vocabularyComment),
+    pronunciation: buildScore(
+      result.pronunciation,
+      result.pronunciationComment
+    ),
+    fluency: buildScore(result.fluency, result.fluencyComment),
+    relevance: buildScore(result.relevance, result.relevanceComment),
+    confidence: buildScore(result.confidence, result.confidenceComment),
+    suggestions: Array.isArray(result.suggestions)
+      ? result.suggestions
+      : [],
     focusAnalysis,
-
     coach,
-
-    improvedAnswer:
-
-      result.improvedAnswer ?? "",
-
+    improvedAnswer: result.improvedAnswer ?? "",
   };
-
 }
-
-/* ============================================================
- * Public API
- * ============================================================
- */
 
 export async function evaluateInterview(
-
-  question: string,
-
+  question: InterviewQuestion,
   transcript: string
-
 ): Promise<EvaluationResult> {
-
   validateTranscript(transcript);
 
-  const focusAnalysis =
-    analyzeFocus(
-      question,
-      transcript
-    );
+  const focusAnalysis = analyzeFocus(question.title, transcript);
+  const result = await requestEvaluation(question, transcript);
 
-  const coach =
-    coachQuestion(
-      question,
-      transcript
-    );
+  // Build the initial result first. The coach message is finalized only
+  // after the same AI scores used by the overall badge are available.
+  const evaluation = buildEvaluation(result, focusAnalysis, {
+    good: false,
+    feedback: [],
+  });
 
-  const result =
-    await requestEvaluation(
-      transcript
-    );
+  evaluation.overall = calculateOverall({
+    grammar: evaluation.grammar,
+    vocabulary: evaluation.vocabulary,
+    pronunciation: evaluation.pronunciation,
+    fluency: evaluation.fluency,
+    relevance: evaluation.relevance,
+    confidence: evaluation.confidence,
+    suggestions: evaluation.suggestions,
+    focusAnalysis: evaluation.focusAnalysis,
+    coach: evaluation.coach,
+    improvedAnswer: evaluation.improvedAnswer,
+  });
 
-  const evaluation =
-    buildEvaluation(
+  // Keep the coaching verdict consistent with the displayed score.
+  // "Excellent" is shown only when both overall quality and relevance
+  // are strong. Otherwise, show concrete improvement guidance.
+  const isStrongAnswer =
+    evaluation.overall >= 7 &&
+    evaluation.relevance.score >= 7;
 
-      result,
+  if (isStrongAnswer) {
+    evaluation.coach = {
+      good: true,
+      feedback: [],
+    };
+  } else {
+    const feedback = [
+      evaluation.overallFeedback,
+      evaluation.relevance.comment,
+      ...evaluation.suggestions,
+    ]
+      .filter((item): item is string =>
+        typeof item === "string" && item.trim().length > 0
+      )
+      .map((item) => item.trim())
+      .filter((item, index, items) =>
+        items.indexOf(item) === index
+      )
+      .slice(0, 4);
 
-      focusAnalysis,
-
-      coach
-
-    );
-
-  evaluation.overall =
-    calculateOverall({
-
-      grammar:
-        evaluation.grammar,
-
-      vocabulary:
-        evaluation.vocabulary,
-
-      pronunciation:
-        evaluation.pronunciation,
-
-      fluency:
-        evaluation.fluency,
-
-      relevance:
-        evaluation.relevance,
-
-      confidence:
-        evaluation.confidence,
-
-      suggestions:
-        evaluation.suggestions,
-
-      focusAnalysis:
-        evaluation.focusAnalysis,
-
-      coach:
-        evaluation.coach,
-
-      improvedAnswer:
-        evaluation.improvedAnswer,
-
-    });
+    evaluation.coach = {
+      good: false,
+      feedback:
+        feedback.length > 0
+          ? feedback
+          : [
+              "Your answer needs more relevant details, clearer structure, and stronger supporting examples.",
+            ],
+    };
+  }
 
   return evaluation;
-
 }
-
-/* ============================================================
- * End of File
- * ============================================================
- */

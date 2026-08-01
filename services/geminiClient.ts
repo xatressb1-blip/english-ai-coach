@@ -179,25 +179,38 @@ export async function generateJson<T>(
  */
 
 export interface GeminiEvaluationResult {
-
   grammar: number;
-
+  grammarComment: string;
   vocabulary: number;
-
+  vocabularyComment: string;
   pronunciation: number;
-
+  pronunciationComment: string;
   fluency: number;
-
+  fluencyComment: string;
   relevance: number;
-
+  relevanceComment: string;
   confidence: number;
-
+  confidenceComment: string;
+  overallFeedback: string;
   mistakes: string[];
-
   suggestions: string[];
-
   improvedAnswer: string;
+}
 
+export interface EvaluationQuestionContext {
+  title: string;
+  description: string;
+  level: string;
+  keywords: string[];
+  grammarFocus: string[];
+  vocabularyLevel: string;
+  sampleAnswer: string;
+  commonMistakes: string[];
+}
+
+interface GenerateEvaluationInput {
+  transcript: string;
+  question: EvaluationQuestionContext;
 }
 
 /* ============================================================
@@ -205,58 +218,83 @@ export interface GeminiEvaluationResult {
  * ============================================================
  */
 
-export async function generateEvaluation(
-
-  answer: string
-
-): Promise<GeminiEvaluationResult> {
-
+export async function generateEvaluation({
+  transcript,
+  question,
+}: GenerateEvaluationInput): Promise<GeminiEvaluationResult> {
   const prompt = `
-You are a professional English Interview Examiner.
+You are a professional English job-interview examiner and supportive speaking coach.
 
-Evaluate the following interview answer.
+Evaluate the candidate's answer for THIS specific interview question.
 
-Candidate Answer:
+INTERVIEW QUESTION:
+${question.title}
 
-"${answer}"
+QUESTION PURPOSE:
+${question.description}
 
-Return ONLY valid JSON.
+EXPECTED LEVEL:
+${question.level}
 
+TARGET VOCABULARY LEVEL:
+${question.vocabularyLevel}
+
+IMPORTANT IDEAS OR KEYWORDS:
+${question.keywords.join(", ")}
+
+GRAMMAR FOCUS:
+${question.grammarFocus.join(", ")}
+
+REFERENCE SAMPLE ANSWER:
+${question.sampleAnswer}
+
+COMMON MISTAKES TO WATCH FOR:
+${question.commonMistakes.join("; ")}
+
+CANDIDATE ANSWER:
+${transcript}
+
+SCORING RULES:
+- Score every category from 0 to 10.
+- Use the sample answer only as a content and structure benchmark.
+- Do NOT penalize the candidate for using different wording or personal details.
+- Give a high relevance score when the answer directly addresses the question and covers several important ideas.
+- Evaluate grammar according to the listed grammar focus while also considering overall accuracy.
+- Evaluate vocabulary according to the target level and suitability for a professional interview.
+- Pronunciation must be estimated only from the transcript, so state this limitation briefly.
+- Confidence should be inferred from clarity, directness, positive wording, and completeness.
+- Keep feedback encouraging, specific, and suitable for an English learner.
+- The improved answer must preserve the candidate's meaning, correct errors, and sound natural and confident.
+- Do not copy the sample answer word for word.
+
+Return ONLY valid JSON with exactly this structure:
 {
-  "grammar":0,
-  "vocabulary":0,
-  "pronunciation":0,
-  "fluency":0,
-  "relevance":0,
-  "confidence":0,
-  "mistakes":[],
-  "suggestions":[],
-  "improvedAnswer":""
+  "grammar": 0,
+  "grammarComment": "",
+  "vocabulary": 0,
+  "vocabularyComment": "",
+  "pronunciation": 0,
+  "pronunciationComment": "",
+  "fluency": 0,
+  "fluencyComment": "",
+  "relevance": 0,
+  "relevanceComment": "",
+  "confidence": 0,
+  "confidenceComment": "",
+  "overallFeedback": "",
+  "mistakes": [],
+  "suggestions": [],
+  "improvedAnswer": ""
 }
 `;
 
-  console.log(
+  console.log("[Gemini] Evaluating answer against question context...");
 
-    "[Gemini] Evaluating interview..."
+  const result = await generateJson<GeminiEvaluationResult>(prompt);
 
-  );
-
-  const result =
-
-    await generateJson<GeminiEvaluationResult>(
-
-      prompt
-
-    );
-
-  console.log(
-
-    "[Gemini] Evaluation completed."
-
-  );
+  console.log("[Gemini] Context-aware evaluation completed.");
 
   return result;
-
 }
 
 /* ============================================================

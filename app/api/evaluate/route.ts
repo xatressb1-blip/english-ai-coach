@@ -1,148 +1,79 @@
-/**
- * ============================================================
- * English AI Coach
- * ------------------------------------------------------------
- * Module:
- * AI Evaluation API
- *
- * File:
- * app/api/evaluate/route.ts
- *
- * Version:
- * 4.0 Stable
- *
- * Status:
- * Development
- *
- * Description
- * ------------------------------------------------------------
- * API Gateway for AI Evaluation.
- *
- * Responsibilities
- * ------------------------------------------------------------
- * • Validate request
- * • Call Gemini Client
- * • Return JSON response
- *
- * IMPORTANT
- * ------------------------------------------------------------
- * This file NEVER communicates directly with Google Gemini.
- *
- * ============================================================
- */
+import { generateEvaluation } from "@/services/geminiClient";
 
-import {
+interface EvaluationQuestionPayload {
+  id?: number;
+  title?: string;
+  description?: string;
+  level?: string;
+  keywords?: string[];
+  grammarFocus?: string[];
+  vocabularyLevel?: string;
+  sampleAnswer?: string;
+  commonMistakes?: string[];
+}
 
-  generateEvaluation,
-
-} from "@/services/geminiClient";
-
-export async function POST(
-
-  request: Request
-
-) {
-
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
 
-    //----------------------------------------------------------
-    // Request
-    //----------------------------------------------------------
+    const transcript =
+      typeof body?.transcript === "string"
+        ? body.transcript.trim()
+        : "";
 
-    const {
+    const question = body?.question as EvaluationQuestionPayload | undefined;
 
-      prompt,
-
-    } = await request.json();
-
-    if (
-
-      !prompt ||
-
-      !prompt.trim()
-
-    ) {
-
+    if (!transcript) {
       return Response.json(
-
         {
-
           success: false,
-
-          message:
-
-            "Transcript is empty.",
-
+          message: "Transcript is empty.",
         },
-
-        {
-
-          status: 400,
-
-        }
-
+        { status: 400 }
       );
-
     }
 
-    //----------------------------------------------------------
-    // Gemini
-    //----------------------------------------------------------
-
-    const result =
-
-      await generateEvaluation(
-
-        prompt
-
+    if (!question?.title || !question?.sampleAnswer) {
+      return Response.json(
+        {
+          success: false,
+          message: "Question context or sample answer is missing.",
+        },
+        { status: 400 }
       );
+    }
 
-    //----------------------------------------------------------
-    // Success
-    //----------------------------------------------------------
-
-    return Response.json({
-
-      success: true,
-
-      result,
-
+    const result = await generateEvaluation({
+      transcript,
+      question: {
+        title: question.title,
+        description: question.description ?? "",
+        level: question.level ?? "",
+        keywords: Array.isArray(question.keywords) ? question.keywords : [],
+        grammarFocus: Array.isArray(question.grammarFocus)
+          ? question.grammarFocus
+          : [],
+        vocabularyLevel: question.vocabularyLevel ?? "",
+        sampleAnswer: question.sampleAnswer,
+        commonMistakes: Array.isArray(question.commonMistakes)
+          ? question.commonMistakes
+          : [],
+      },
     });
 
-  }
-
-  catch (error: any) {
-
-    console.error(
-
-      "[Evaluate API]",
-
-      error
-
-    );
+    return Response.json({
+      success: true,
+      result,
+    });
+  } catch (error: any) {
+    console.error("[Evaluate API]", error);
 
     return Response.json(
-
       {
-
         success: false,
-
-        message:
-
-          error?.message ??
-
-          "Unknown Server Error",
-
+        message: error?.message ?? "Unknown Server Error",
       },
-
-      {
-
-        status: 500,
-
-      }
-
+      { status: 500 }
     );
-
   }
-
 }

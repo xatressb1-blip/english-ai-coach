@@ -4,4 +4,5 @@ export interface Lesson {
   description: string;
   level: string;
   duration: number;
+  questionId: number;
 }
