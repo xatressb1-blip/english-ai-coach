@@ -8,18 +8,13 @@ import { useEvaluationContext } from "@/context/EvaluationContext";
 import { useHistoryContext } from "@/context/HistoryContext";
 
 import { evaluateInterview } from "@/services/evaluationService";
+import { InterviewQuestion } from "@/types/InterviewQuestion";
 
-export function useEvaluation() {
+export function useEvaluation(questionOverride?: InterviewQuestion) {
 
   const { transcript } = useSpeechContext();
 
-  const {
-
-    currentQuestion,
-
-    currentQuestionIndex,
-
-  } = useInterviewContext();
+  const { currentQuestion } = useInterviewContext();
 
   const {
 
@@ -42,6 +37,8 @@ export function useEvaluation() {
     addHistory,
 
   } = useHistoryContext();
+
+  const evaluationQuestion = questionOverride ?? currentQuestion;
 
   const evaluate = useCallback(async () => {
 
@@ -67,7 +64,7 @@ export function useEvaluation() {
 
       const evaluation = await evaluateInterview(
 
-        currentQuestion,
+        evaluationQuestion,
 
         transcript
 
@@ -79,9 +76,9 @@ export function useEvaluation() {
 
         id: crypto.randomUUID(),
 
-        questionId: currentQuestionIndex,
+        questionId: evaluationQuestion.id,
 
-        questionTitle: currentQuestion.title,
+        questionTitle: evaluationQuestion.title,
 
         transcript,
 
@@ -123,9 +120,7 @@ export function useEvaluation() {
 
     transcript,
 
-    currentQuestion,
-
-    currentQuestionIndex,
+    evaluationQuestion,
 
     addHistory,
 

@@ -1,84 +1,11 @@
-import { Lesson } from "../types/lesson";
+import { interviewQuestions } from "@/data/interviewQuestions";
 
-export const lessons: Lesson[] = [
-  {
-    id: 1,
-    questionId: 1,
-    title: "Introduce Yourself",
-    description: "Build a clear, professional self-introduction for interviews.",
-    level: "Beginner",
-    duration: 10,
-  },
-  {
-    id: 2,
-    questionId: 2,
-    title: "Show Your Strengths",
-    description: "Explain your main strengths with confidence and real examples.",
-    level: "Beginner",
-    duration: 12,
-  },
-  {
-    id: 3,
-    questionId: 3,
-    title: "Why Our Company?",
-    description: "Practice giving a thoughtful reason for joining the company.",
-    level: "Intermediate",
-    duration: 12,
-  },
-  {
-    id: 4,
-    questionId: 4,
-    title: "Why Should We Hire You?",
-    description: "Present your value, attitude, and job fit in one strong answer.",
-    level: "Intermediate",
-    duration: 12,
-  },
-  {
-    id: 5,
-    questionId: 5,
-    title: "Short-Term Goals",
-    description: "Describe realistic goals for your next one to two years.",
-    level: "Intermediate",
-    duration: 10,
-  },
-  {
-    id: 6,
-    questionId: 6,
-    title: "Long-Term Goals",
-    description: "Talk about your long-term career direction and growth plan.",
-    level: "Intermediate",
-    duration: 10,
-  },
-  {
-    id: 7,
-    questionId: 7,
-    title: "Working Under Pressure",
-    description: "Explain how you stay calm and effective during pressure.",
-    level: "Intermediate",
-    duration: 12,
-  },
-  {
-    id: 8,
-    questionId: 8,
-    title: "Team Environment",
-    description: "Show how you cooperate, support others, and reach shared goals.",
-    level: "Intermediate",
-    duration: 12,
-  },
-  {
-    id: 9,
-    questionId: 9,
-    title: "Handling Change",
-    description: "Demonstrate adaptability and a positive mindset toward change.",
-    level: "Intermediate",
-    duration: 10,
-  },
-  {
-    id: 10,
-    questionId: 10,
-    title: "Work Motivation",
-    description: "Share what keeps you engaged, responsible, and productive at work.",
-    level: "Intermediate",
-    duration: 10,
-  },
-];
+// Compatibility export generated from the single question source.
+export const lessons = interviewQuestions.map((question) => ({
+  id: question.id,
+  questionId: question.id,
+  title: question.shortTitle,
+  description: question.description,
+  level: question.level,
+  duration: question.practiceDuration,
+}));

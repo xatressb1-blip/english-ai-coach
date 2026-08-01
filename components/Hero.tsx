@@ -2,25 +2,31 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="px-4 py-12 text-center sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-      <div className="mx-auto max-w-4xl">
-        <span className="inline-flex rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
-          AI-powered interview practice
-        </span>
+    <section className="px-4 py-16 text-center sm:py-20">
+      <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
+        AI-powered recruiter simulation
+      </span>
 
-        <h1 className="mt-6 text-3xl font-bold leading-tight text-blue-700 sm:text-4xl md:text-5xl lg:text-6xl">
-          English AI Interview Coach
-        </h1>
+      <h1 className="mx-auto mt-6 max-w-5xl text-4xl font-bold tracking-tight text-blue-700 sm:text-5xl lg:text-6xl">
+        English AI Interview Coach
+      </h1>
 
-        <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg lg:text-xl">
-          Practise English interviews with an AI recruiter and receive instant feedback.
-        </p>
+      <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 sm:text-xl">
+        Practice with an AI recruiter, improve every answer, and build the confidence to face a real business interview.
+      </p>
 
+      <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+        <Link
+          href="#learning-path"
+          className="rounded-xl bg-blue-600 px-7 py-4 text-base font-bold text-white transition hover:bg-blue-700"
+        >
+          Start Guided Practice
+        </Link>
         <Link
           href="/interview"
-          className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition hover:bg-blue-700 sm:w-auto sm:text-lg"
+          className="rounded-xl border border-slate-300 bg-white px-7 py-4 text-base font-bold text-slate-800 transition hover:bg-slate-50"
         >
-          Start Interview Practice
+          Enter Mock Interview
         </Link>
       </div>
     </section>

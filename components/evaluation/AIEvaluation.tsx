@@ -2,6 +2,7 @@
 
 import { useEvaluation } from "@/hooks/useEvaluation";
 import { useSpeechContext } from "@/context/SpeechContext";
+import { InterviewQuestion } from "@/types/InterviewQuestion";
 
 import OverallBadge from "./OverallBadge";
 import ScoreGrid from "./ScoreGrid";
@@ -12,7 +13,11 @@ import TranscriptCard from "./TranscriptCard";
 import FocusAnalysisCard from "./FocusAnalysisCard";
 import CoachFeedbackCard from "./CoachFeedbackCard";
 
-export default function AIEvaluation() {
+interface AIEvaluationProps {
+  question?: InterviewQuestion;
+}
+
+export default function AIEvaluation({ question }: AIEvaluationProps) {
   const { transcript, setTranscript } = useSpeechContext();
 
   const {
@@ -20,7 +25,7 @@ export default function AIEvaluation() {
     loading,
     error,
     evaluate,
-  } = useEvaluation();
+  } = useEvaluation(question);
 
   return (
     <section className="mt-8 rounded-xl border bg-white p-4 shadow-md sm:mt-10 sm:p-6 lg:rounded-2xl lg:p-8 lg:shadow-lg">
