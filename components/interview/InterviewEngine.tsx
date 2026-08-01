@@ -19,9 +19,12 @@ import FeedbackDialog from "../feedback/FeedbackDialog";
 import VirtualInterviewLobby from "./VirtualInterviewLobby";
 import RecruiterStage from "./RecruiterStage";
 import InterviewCompletion from "./InterviewCompletion";
+import LevelSelection from "./LevelSelection";
+import FinalRecruiterReport from "./FinalRecruiterReport";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [levelChosen, setLevelChosen] = useState(false);
   const [enteredRoom, setEnteredRoom] = useState(false);
 
   const {
@@ -33,6 +36,10 @@ export default function InterviewEngine() {
     setFlow,
     startQuestion,
   } = useInterviewContext();
+
+  if (!levelChosen) {
+    return <LevelSelection onContinue={() => setLevelChosen(true)} />;
+  }
 
   if (!enteredRoom) {
     return (
@@ -47,7 +54,7 @@ export default function InterviewEngine() {
   }
 
   if (interviewFinished) {
-    return <InterviewCompletion />;
+    return <FinalRecruiterReport />;
   }
 
   if (flow.state === InterviewState.READY) {

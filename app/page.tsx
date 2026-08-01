@@ -1,70 +1,27 @@
 import Link from "next/link";
-
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import QuestionCard from "@/components/QuestionCard";
 import { interviewQuestions } from "@/data/interviewQuestions";
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-slate-100">
-      <Navbar />
-      <Hero />
+  const basic = interviewQuestions.filter((question) => question.trainingLevel === "basic");
+  const advanced = interviewQuestions.filter((question) => question.trainingLevel === "advanced");
 
-      <section id="learning-path" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-8 max-w-3xl">
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
-            Learning Path
-          </span>
-          <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">
-            Build confidence one interview question at a time
-          </h2>
-          <p className="mt-3 text-base leading-8 text-slate-600">
-            Learn the structure, review a confident sample answer, practise by voice or text, and receive question-specific AI feedback.
-          </p>
+  const renderLevel = (title: string, subtitle: string, items: typeof interviewQuestions, startNumber: number, accent: string) => (
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className={`rounded-3xl border p-6 sm:p-8 ${accent}`}>
+        <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div><p className="text-sm font-bold uppercase tracking-[.18em] text-slate-500">Learning Path</p><h2 className="mt-2 text-3xl font-bold text-slate-900">{title}</h2><p className="mt-2 max-w-3xl leading-7 text-slate-600">{subtitle}</p></div>
+          <Link href="/interview" className="rounded-xl bg-slate-900 px-6 py-3 text-center font-bold text-white">Start {title} Mock Interview</Link>
         </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {interviewQuestions.map((question, index) => (
-            <QuestionCard key={question.id} question={question} index={index} />
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-9 lg:p-12">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.35fr_0.65fr]">
-            <div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-blue-200">
-                Full Mock Interview
-              </span>
-              <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
-                Enter the virtual interview room
-              </h2>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-slate-300">
-                Meet the AI recruiter, answer all 10 questions in sequence, and practise responding under realistic interview pressure. Sample answers stay hidden during this mode.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-200">
-                <span className="rounded-full bg-white/10 px-4 py-2">10 recruiter questions</span>
-                <span className="rounded-full bg-white/10 px-4 py-2">Voice interaction</span>
-                <span className="rounded-full bg-white/10 px-4 py-2">AI feedback</span>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-              <div className="text-6xl">🤖</div>
-              <p className="mt-3 font-semibold text-blue-100">AI Recruiter is ready</p>
-              <Link
-                href="/interview"
-                className="mt-6 block rounded-xl bg-blue-500 px-6 py-4 font-bold text-white transition hover:bg-blue-400"
-              >
-                Start Mock Interview
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">{items.map((question, index) => <QuestionCard key={question.id} question={question} index={startNumber + index - 1} />)}</div>
+      </div>
+    </section>
   );
+
+  return <main className="min-h-screen bg-slate-100"><Navbar /><Hero />
+    {renderLevel("Level 1 – Cơ bản", "Questions 1–3: build a confident foundation with self-introduction, strengths, and company motivation.", basic, 1, "border-blue-200 bg-blue-50/50")}
+    {renderLevel("Level 2 – Nâng cao", "Questions 4–10: practise deeper recruiter questions about value, goals, pressure, teamwork, change, and motivation.", advanced, 4, "border-violet-200 bg-violet-50/50")}
+  </main>;
 }

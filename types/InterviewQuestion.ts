@@ -6,8 +6,11 @@ export interface EvaluationCriteria {
   confidence: number;
 }
 
+export type TrainingLevel = "basic" | "advanced";
+
 export interface InterviewQuestion {
   id: number;
+  trainingLevel: TrainingLevel;
   shortTitle: string;
   practiceDuration: number;
   category: string;

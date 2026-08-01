@@ -3,6 +3,7 @@ import { InterviewQuestion } from "@/types/InterviewQuestion";
 export const interviewQuestions: InterviewQuestion[] = [
   {
     id: 1,
+    trainingLevel: "basic",
     shortTitle: "Introduce Yourself",
     practiceDuration: 10,
     category: "Personal",
@@ -20,6 +21,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 2,
+    trainingLevel: "basic",
     shortTitle: "Show Your Strengths",
     practiceDuration: 10,
     category: "Personal",
@@ -37,6 +39,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 3,
+    trainingLevel: "basic",
     shortTitle: "Why Our Company?",
     practiceDuration: 12,
     category: "Company Fit",
@@ -54,6 +57,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 4,
+    trainingLevel: "advanced",
     shortTitle: "Why Should We Hire You?",
     practiceDuration: 12,
     category: "Company Fit",
@@ -71,6 +75,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 5,
+    trainingLevel: "advanced",
     shortTitle: "Short-Term Goals",
     practiceDuration: 10,
     category: "Goals",
@@ -88,6 +93,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 6,
+    trainingLevel: "advanced",
     shortTitle: "Long-Term Goals",
     practiceDuration: 10,
     category: "Goals",
@@ -105,6 +111,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 7,
+    trainingLevel: "advanced",
     shortTitle: "Working Under Pressure",
     practiceDuration: 12,
     category: "Work Style",
@@ -122,6 +129,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 8,
+    trainingLevel: "advanced",
     shortTitle: "Team Environment",
     practiceDuration: 12,
     category: "Teamwork",
@@ -139,6 +147,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 9,
+    trainingLevel: "advanced",
     shortTitle: "Handling Change",
     practiceDuration: 10,
     category: "Work Style",
@@ -156,6 +165,7 @@ export const interviewQuestions: InterviewQuestion[] = [
   },
   {
     id: 10,
+    trainingLevel: "advanced",
     shortTitle: "Work Motivation",
     practiceDuration: 10,
     category: "Work Style",
