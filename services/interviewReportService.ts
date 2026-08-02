@@ -1,9 +1,18 @@
-import { InterviewAttempt, RecruiterReport } from "@/types/interviewReport";
+import {
+  InterviewAttempt,
+  RecruiterReport,
+  SavedRecruiterReport,
+  TrainingLevel,
+} from "@/types/interviewReport";
+
+const REPORT_STORAGE_KEY = "english-ai-recruiter-reports";
 
 const average = (values: number[]) =>
-  values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1)) : 0;
+  values.length
+    ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1))
+    : 0;
 
-export function buildRecruiterReport(attempts: InterviewAttempt[]): RecruiterReport {
+export function buildRecruiterReport(attempts: InterviewAttempt[], candidateName = "Candidate"): RecruiterReport {
   const sorted = [...attempts].sort((a, b) => a.evaluation.overall - b.evaluation.overall);
   const weakestAttempt = sorted[0] ?? null;
   const bestAttempt = sorted.at(-1) ?? null;
@@ -17,7 +26,7 @@ export function buildRecruiterReport(attempts: InterviewAttempt[]): RecruiterRep
         ? "Interview Ready"
         : "Strong Candidate";
 
-  const breakdown = {
+  const scoreBreakdown = {
     grammar: average(attempts.map((item) => item.evaluation.grammar.score)),
     vocabulary: average(attempts.map((item) => item.evaluation.vocabulary.score)),
     pronunciation: average(attempts.map((item) => item.evaluation.pronunciation.score)),
@@ -27,12 +36,12 @@ export function buildRecruiterReport(attempts: InterviewAttempt[]): RecruiterRep
   };
 
   const metrics = [
-    ["Grammar accuracy", breakdown.grammar],
-    ["Vocabulary", breakdown.vocabulary],
-    ["Pronunciation", breakdown.pronunciation],
-    ["Fluency", breakdown.fluency],
-    ["Answer relevance", breakdown.relevance],
-    ["Confidence", breakdown.confidence],
+    ["Grammar accuracy", scoreBreakdown.grammar],
+    ["Vocabulary", scoreBreakdown.vocabulary],
+    ["Pronunciation", scoreBreakdown.pronunciation],
+    ["Fluency", scoreBreakdown.fluency],
+    ["Answer relevance", scoreBreakdown.relevance],
+    ["Confidence", scoreBreakdown.confidence],
   ] as const;
 
   const strengths = [...metrics]
@@ -54,13 +63,87 @@ export function buildRecruiterReport(attempts: InterviewAttempt[]): RecruiterRep
         : "You are still developing interview readiness. Focus first on answering the question directly, using complete sentences, and giving one clear example.";
 
   return {
+    candidateName,
     overallScore,
     readiness,
     recruiterImpression,
     strengths,
     improvements,
+    recommendedNextPractice: [
+      weakestAttempt
+        ? `Practise “${weakestAttempt.questionTitle}” again and add one specific example.`
+        : "Complete all questions in this level.",
+      "Keep each answer focused and structured with a clear beginning, supporting point, and conclusion.",
+      "Repeat your answers aloud until you can speak for 60–90 seconds with fewer pauses.",
+    ],
     bestAttempt,
     weakestAttempt,
-    scoreBreakdown: breakdown,
+    scoreBreakdown,
   };
+}
+
+export async function requestIntelligentRecruiterReport(
+  attempts: InterviewAttempt[],
+  level: TrainingLevel,
+  candidateName: string
+): Promise<RecruiterReport> {
+  const fallback = buildRecruiterReport(attempts, candidateName);
+
+  try {
+    const response = await fetch("/api/interview-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attempts, level, candidateName, fallback }),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data?.success || !data?.report) return fallback;
+
+    return {
+      ...fallback,
+      recruiterImpression: data.report.recruiterImpression ?? fallback.recruiterImpression,
+      strengths: Array.isArray(data.report.strengths) ? data.report.strengths.slice(0, 3) : fallback.strengths,
+      improvements: Array.isArray(data.report.improvements) ? data.report.improvements.slice(0, 3) : fallback.improvements,
+      recommendedNextPractice: Array.isArray(data.report.recommendedNextPractice)
+        ? data.report.recommendedNextPractice.slice(0, 3)
+        : fallback.recommendedNextPractice,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveRecruiterReport(
+  report: RecruiterReport,
+  attempts: InterviewAttempt[],
+  level: TrainingLevel,
+  candidateName: string
+): SavedRecruiterReport | null {
+  if (typeof window === "undefined") return null;
+
+  const saved: SavedRecruiterReport = {
+    ...report,
+    candidateName,
+    id: crypto.randomUUID(),
+    level,
+    createdAt: new Date().toISOString(),
+    attempts,
+  };
+
+  try {
+    const current = JSON.parse(localStorage.getItem(REPORT_STORAGE_KEY) ?? "[]") as SavedRecruiterReport[];
+    localStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify([saved, ...current]));
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+export function getSavedRecruiterReports(): SavedRecruiterReport[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(REPORT_STORAGE_KEY) ?? "[]") as SavedRecruiterReport[];
+  } catch {
+    return [];
+  }
 }

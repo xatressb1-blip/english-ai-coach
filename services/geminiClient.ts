@@ -300,3 +300,52 @@ Return ONLY valid JSON with exactly this structure:
 /* ============================================================
  * End of File
  * ============================================================  */
+export interface GeminiRecruiterReportResult {
+  recruiterImpression: string;
+  strengths: string[];
+  improvements: string[];
+  recommendedNextPractice: string[];
+}
+
+export async function generateRecruiterReport(
+  candidateName: string,
+  levelLabel: string,
+  attempts: Array<{
+    questionTitle: string;
+    transcript: string;
+    overall: number;
+    relevance: number;
+    confidence: number;
+    suggestions: string[];
+  }>
+): Promise<GeminiRecruiterReportResult> {
+  return generateJson<GeminiRecruiterReportResult>(`
+You are a professional corporate recruiter and supportive interview coach.
+Create one final recruiter report for this completed interview level.
+
+CANDIDATE NAME: ${candidateName}
+LEVEL: ${levelLabel}
+
+INTERVIEW RESULTS:
+${JSON.stringify(attempts, null, 2)}
+
+RULES:
+- Address the candidate naturally by name where appropriate, but do not overuse the name.
+- Base every comment only on the supplied answers and scores.
+- Do not claim that the candidate did something that is not shown in the data.
+- Be encouraging but honest and consistent with the scores.
+- If scores are low, do not use words such as excellent or outstanding.
+- Strengths must be specific and evidence-based.
+- Improvements must be practical and specific.
+- Recommend exactly three next practice actions.
+- Return valid JSON only.
+
+JSON FORMAT:
+{
+  "recruiterImpression": "",
+  "strengths": ["", "", ""],
+  "improvements": ["", "", ""],
+  "recommendedNextPractice": ["", "", ""]
+}
+`);
+}

@@ -7,6 +7,8 @@ import { InterviewAttempt, TrainingLevel } from "@/types/interviewReport";
 import { InterviewFlow, InterviewState, getInitialFlow, readyInterview, startInterview } from "@/services/interviewFlowService";
 
 interface InterviewContextType {
+  candidateName: string;
+  setCandidateName: (name: string) => void;
   selectedLevel: TrainingLevel;
   setSelectedLevel: (level: TrainingLevel) => void;
   currentQuestionIndex: number;
@@ -32,6 +34,7 @@ interface InterviewContextType {
 const InterviewContext = createContext<InterviewContextType | null>(null);
 
 export function InterviewProvider({ children }: { children: ReactNode }) {
+  const [candidateName, setCandidateNameState] = useState("");
   const [selectedLevel, setSelectedLevelState] = useState<TrainingLevel>("basic");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [interviewFinished, setInterviewFinished] = useState(false);
@@ -50,6 +53,15 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
   const progress = totalQuestions ? Math.round((completedQuestions / totalQuestions) * 100) : 0;
   const isFirstQuestion = currentQuestionIndex === 0;
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+
+  const setCandidateName = (name: string) => {
+    const normalizedName = name.trim().replace(/\s+/g, " ");
+    setCandidateNameState(normalizedName);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("english-ai-candidate-name", normalizedName);
+    }
+  };
 
   const setSelectedLevel = (level: TrainingLevel) => {
     setSelectedLevelState(level);
@@ -93,7 +105,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterviewContext.Provider value={{
-      selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
+      candidateName, setCandidateName, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
       interviewFinished, flow, setFlow, attempts, saveAttempt, startQuestion, nextQuestion,
       previousQuestion, finishInterview, resetInterview,

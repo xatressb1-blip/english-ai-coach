@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
+  candidateName: string;
   totalQuestions: number;
   onEnter: () => void;
 }
 
 type MicState = "idle" | "testing" | "ready" | "error";
 
-export default function VirtualInterviewLobby({ totalQuestions, onEnter }: Props) {
+export default function VirtualInterviewLobby({ candidateName, totalQuestions, onEnter }: Props) {
   const [micState, setMicState] = useState<MicState>("idle");
   const [message, setMessage] = useState(
     "Test your microphone before entering the interview room."
@@ -81,7 +82,7 @@ export default function VirtualInterviewLobby({ totalQuestions, onEnter }: Props
             <h2 className="mt-5 text-xl font-bold">Ms. Emma</h2>
             <p className="mt-1 text-sm text-blue-100">AI Talent Acquisition Specialist</p>
             <div className="mt-5 rounded-2xl bg-slate-950/30 p-4 text-left text-sm leading-6 text-slate-200">
-              “Welcome. Take a breath, sit comfortably, and answer as naturally as you would in a real interview.”
+              “Hello {candidateName}. Take a breath, sit comfortably, and answer as naturally as you would in a real interview.”
             </div>
           </div>
         </div>

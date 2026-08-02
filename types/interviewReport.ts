@@ -10,11 +10,13 @@ export interface InterviewAttempt {
 }
 
 export interface RecruiterReport {
+  candidateName: string;
   overallScore: number;
   readiness: "Developing" | "Nearly Ready" | "Interview Ready" | "Strong Candidate";
   recruiterImpression: string;
   strengths: string[];
   improvements: string[];
+  recommendedNextPractice: string[];
   bestAttempt: InterviewAttempt | null;
   weakestAttempt: InterviewAttempt | null;
   scoreBreakdown: {
@@ -25,4 +27,11 @@ export interface RecruiterReport {
     relevance: number;
     confidence: number;
   };
+}
+
+export interface SavedRecruiterReport extends RecruiterReport {
+  id: string;
+  level: TrainingLevel;
+  createdAt: string;
+  attempts: InterviewAttempt[];
 }

@@ -21,13 +21,16 @@ import RecruiterStage from "./RecruiterStage";
 import InterviewCompletion from "./InterviewCompletion";
 import LevelSelection from "./LevelSelection";
 import FinalRecruiterReport from "./FinalRecruiterReport";
+import CandidateProfile from "./CandidateProfile";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [profileCompleted, setProfileCompleted] = useState(false);
   const [levelChosen, setLevelChosen] = useState(false);
   const [enteredRoom, setEnteredRoom] = useState(false);
 
   const {
+    candidateName,
     currentQuestion,
     currentQuestionIndex,
     totalQuestions,
@@ -37,6 +40,10 @@ export default function InterviewEngine() {
     startQuestion,
   } = useInterviewContext();
 
+  if (!profileCompleted) {
+    return <CandidateProfile onContinue={() => setProfileCompleted(true)} />;
+  }
+
   if (!levelChosen) {
     return <LevelSelection onContinue={() => setLevelChosen(true)} />;
   }
@@ -44,6 +51,7 @@ export default function InterviewEngine() {
   if (!enteredRoom) {
     return (
       <VirtualInterviewLobby
+        candidateName={candidateName}
         totalQuestions={totalQuestions}
         onEnter={() => {
           setEnteredRoom(true);
