@@ -94,7 +94,7 @@ export default function InterviewEngine() {
           <strong>Interview rule:</strong> answer in your own words. The model answer is intentionally hidden in Mock Interview mode.
         </div>
 
-        <SpeechRecorder />
+        <SpeechRecorder allowManualInput={false} compact title="Your interview answer" />
         <AIEvaluation question={currentQuestion} />
         <LiveCoachPanel />
         <VoiceCoach />

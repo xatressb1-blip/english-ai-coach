@@ -5,10 +5,13 @@ import { interviewQuestions } from "@/data/interviewQuestions";
 import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { InterviewAttempt, TrainingLevel } from "@/types/interviewReport";
 import { InterviewFlow, InterviewState, getInitialFlow, readyInterview, startInterview } from "@/services/interviewFlowService";
+import { defaultRecruiter, getRecruiterById, RecruiterProfile } from "@/data/recruiters";
 
 interface InterviewContextType {
   candidateName: string;
   setCandidateName: (name: string) => void;
+  selectedRecruiter: RecruiterProfile;
+  setSelectedRecruiterId: (id: string) => void;
   selectedLevel: TrainingLevel;
   setSelectedLevel: (level: TrainingLevel) => void;
   currentQuestionIndex: number;
@@ -35,11 +38,21 @@ const InterviewContext = createContext<InterviewContextType | null>(null);
 
 export function InterviewProvider({ children }: { children: ReactNode }) {
   const [candidateName, setCandidateNameState] = useState("");
+  const [selectedRecruiterId, setSelectedRecruiterIdState] = useState(defaultRecruiter.id);
   const [selectedLevel, setSelectedLevelState] = useState<TrainingLevel>("basic");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [interviewFinished, setInterviewFinished] = useState(false);
   const [flow, setFlow] = useState<InterviewFlow>(getInitialFlow());
   const [attempts, setAttempts] = useState<InterviewAttempt[]>([]);
+
+  const selectedRecruiter = useMemo(() => getRecruiterById(selectedRecruiterId), [selectedRecruiterId]);
+
+  const setSelectedRecruiterId = (id: string) => {
+    setSelectedRecruiterIdState(getRecruiterById(id).id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("english-ai-recruiter", getRecruiterById(id).id);
+    }
+  };
 
   const questions = useMemo(
     () => interviewQuestions.filter((question) => question.trainingLevel === selectedLevel),
@@ -105,7 +118,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterviewContext.Provider value={{
-      candidateName, setCandidateName, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
+      candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
       interviewFinished, flow, setFlow, attempts, saveAttempt, startQuestion, nextQuestion,
       previousQuestion, finishInterview, resetInterview,

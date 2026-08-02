@@ -18,7 +18,13 @@ import {
   stopRecording,
 } from "@/services/speechController";
 
-type RecorderMode = "checking" | "web-speech" | "ios-audio" | "manual";
+type RecorderMode = "checking" | "web-speech" | "audio-upload" | "manual";
+
+interface SpeechRecorderProps {
+  allowManualInput?: boolean;
+  compact?: boolean;
+  title?: string;
+}
 
 function isIOSDevice(): boolean {
   if (typeof navigator === "undefined") {
@@ -59,7 +65,11 @@ function extensionFromMimeType(mimeType: string): string {
   return "webm";
 }
 
-export default function SpeechRecorder() {
+export default function SpeechRecorder({
+  allowManualInput = true,
+  compact = false,
+  title = "Speaking Practice",
+}: SpeechRecorderProps) {
   const [mode, setMode] = useState<RecorderMode>("checking");
   const [speechError, setSpeechError] = useState("");
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -217,10 +227,12 @@ export default function SpeechRecorder() {
       );
 
       queueMicrotask(() => {
-        setMode(canRecord ? "ios-audio" : "manual");
+        setMode(canRecord ? "audio-upload" : "manual");
         if (!canRecord) {
           setSpeechError(
-            "Audio recording is not supported by this browser. Please type your answer below."
+            allowManualInput
+              ? "Audio recording is not supported by this browser. Please type your answer below."
+              : "Audio recording is not supported by this browser. Mock Interview requires a compatible microphone browser."
           );
         }
       });
@@ -228,10 +240,15 @@ export default function SpeechRecorder() {
     }
 
     if (!isSpeechRecognitionSupported()) {
+      const canRecord = Boolean(navigator.mediaDevices && typeof MediaRecorder !== "undefined");
       queueMicrotask(() => {
-        setMode("manual");
+        setMode(canRecord ? "audio-upload" : "manual");
         setSpeechError(
-          "Voice recognition is not supported by this browser. Please type your answer below."
+          canRecord
+            ? "Live speech recognition is unavailable, so audio recording mode is being used for better compatibility."
+            : allowManualInput
+              ? "Voice recording is not supported by this browser. Please type your answer below."
+              : "Voice recording is not supported by this browser. Mock Interview requires microphone access."
         );
       });
       return;
@@ -289,9 +306,14 @@ export default function SpeechRecorder() {
     } catch (error) {
       console.error("[SpeechRecorder] Initialization failed", error);
       queueMicrotask(() => {
-        setMode("manual");
+        const canRecord = Boolean(navigator.mediaDevices && typeof MediaRecorder !== "undefined");
+        setMode(canRecord ? "audio-upload" : "manual");
         setSpeechError(
-          "Voice recognition could not be started. Please type your answer below."
+          canRecord
+            ? "Live recognition could not start, so audio recording mode is being used instead."
+            : allowManualInput
+              ? "Voice recognition could not be started. Please type your answer below."
+              : "Voice recognition could not be started. Check microphone permission and try again."
         );
       });
     }
@@ -305,7 +327,7 @@ export default function SpeechRecorder() {
       destroySpeechRecognition(recognition);
       recognitionRef.current = null;
     };
-  }, [appendTranscript, setStatus]);
+  }, [allowManualInput, appendTranscript, setStatus]);
 
   useEffect(() => {
     return () => {
@@ -318,7 +340,7 @@ export default function SpeechRecorder() {
     };
   }, [stopMediaStream, stopRecordingTimer]);
 
-  const startIOSRecording = async (): Promise<void> => {
+  const startAudioRecording = async (): Promise<void> => {
     setSpeechError("");
     transcriptRef.current = "";
     resetSpeech();
@@ -378,7 +400,14 @@ export default function SpeechRecorder() {
       recorder.start(1000);
       setStatus("recording");
       recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((seconds) => seconds + 1);
+        setRecordingSeconds((seconds) => {
+          const next = seconds + 1;
+          if (next >= 180 && mediaRecorderRef.current?.state === "recording") {
+            setStatus("processing");
+            mediaRecorderRef.current.stop();
+          }
+          return next;
+        });
       }, 1000);
     } catch (error) {
       console.error("[SpeechRecorder] getUserMedia failed", error);
@@ -395,8 +424,8 @@ export default function SpeechRecorder() {
       return;
     }
 
-    if (mode === "ios-audio") {
-      await startIOSRecording();
+    if (mode === "audio-upload") {
+      await startAudioRecording();
       return;
     }
 
@@ -422,7 +451,7 @@ export default function SpeechRecorder() {
       return;
     }
 
-    if (mode === "ios-audio") {
+    if (mode === "audio-upload") {
       const recorder = mediaRecorderRef.current;
       if (!recorder || recorder.state === "inactive") {
         setStatus("finished");
@@ -464,38 +493,38 @@ export default function SpeechRecorder() {
     resetSpeech();
   };
 
-  const canUseVoice = mode === "web-speech" || mode === "ios-audio";
-  const showManualInput = mode === "manual" || Boolean(speechError && mode === "ios-audio");
+  const canUseVoice = mode === "web-speech" || mode === "audio-upload";
+  const showManualInput = allowManualInput && mode === "manual";
 
   const statusText = {
-    ready: mode === "ios-audio" ? "🎤 Ready to record on iPhone" : "🎤 Ready to practice",
+    ready: mode === "audio-upload" ? "🎤 Ready for compatible audio recording" : "🎤 Ready to practice",
     recording:
-      mode === "ios-audio"
+      mode === "audio-upload"
         ? `🔴 Microphone active • ${recordingSeconds}s`
         : "🔴 Recording...",
     processing:
-      mode === "ios-audio"
+      mode === "audio-upload"
         ? "🤖 Converting your English audio to text..."
         : "🤖 Processing your answer...",
     finished: "✅ Recording completed",
   }[status];
 
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:mt-8 sm:p-6 lg:mt-10 lg:p-8">
+    <section className={`${compact ? "mt-5 p-4 sm:p-5" : "mt-6 p-4 sm:mt-8 sm:p-6 lg:mt-10 lg:p-8"} rounded-2xl border border-slate-200 bg-white shadow-lg`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl lg:text-3xl">
-          🎤 Speaking Practice
+        <h2 className={`${compact ? "text-lg sm:text-xl" : "text-xl sm:text-2xl lg:text-3xl"} font-bold text-slate-900`}>
+          🎤 {title}
         </h2>
-        {mode === "ios-audio" && (
+        {mode === "audio-upload" && (
           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-            iPhone audio mode
+            Compatible audio mode
           </span>
         )}
       </div>
 
-      {mode === "ios-audio" && (
+      {mode === "audio-upload" && (
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Safari records your voice first. After you press Stop Recording, the audio is sent securely to the server and converted to English text.
+          Your browser records audio first. After you press Stop Recording, the audio is sent to the server and converted to English text. Keep this page open until the transcript appears.
         </p>
       )}
 
@@ -568,7 +597,7 @@ export default function SpeechRecorder() {
         <h3 className="mb-3 text-base font-semibold text-slate-800 sm:text-lg">
           Your Answer
         </h3>
-        <div className="min-h-[150px] overflow-y-auto break-words rounded-xl border border-slate-200 bg-slate-50 p-4 leading-7 sm:min-h-[200px] sm:p-5 lg:min-h-[220px] lg:p-6">
+        <div className={`${compact ? "min-h-[120px] sm:min-h-[150px]" : "min-h-[150px] sm:min-h-[200px] lg:min-h-[220px]"} overflow-y-auto break-words rounded-xl border border-slate-200 bg-slate-50 p-4 leading-7 sm:p-5`}>
           {transcript.trim() ? (
             <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800 sm:text-base">
               {transcript}
