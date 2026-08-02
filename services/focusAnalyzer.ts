@@ -1,802 +1,230 @@
-/**
- * ============================================================
- * English AI Coach Platform
- * ------------------------------------------------------------
- * Module:
- * Focus Analyzer
- *
- * File:
- * services/focusAnalyzer.ts
- *
- * Version:
- * 2.0 Stable
- *
- * Status:
- * Development
- *
- * Description
- * ------------------------------------------------------------
- * Analyse interview answers and estimate:
- *
- * - Coverage
- * - Structure
- * - Length
- * - Focus
- *
- * This module intentionally contains NO AI call.
- *
- * It is deterministic.
- *
- * ============================================================
- */
+import { InterviewQuestion } from "@/types/InterviewQuestion";
 
 export interface FocusAnalysis {
-
   overallScore: number;
-
   coverageScore: number;
-
   structureScore: number;
-
   lengthScore: number;
-
   estimatedWords: number;
-
   estimatedSentences: number;
-
   totalIdeas: number;
-
   coveredTopics: string[];
-
   missingTopics: string[];
-
   extraTopics: string[];
-
   feedback: string;
-
 }
 
-/* ============================================================
- * Normalization
- * ============================================================
- */
-
-function normalizeText(
-  text: string
-): string {
-
-  return text
-
-    .replace(/\s+/g, " ")
-
-    .replace(/\n/g, " ")
-
-    .trim();
-
+function normalizeText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
-/* ============================================================
- * Word Count
- * ============================================================
- */
-
-function estimateWords(
-  text: string
-): number {
-
+function normalizeForMatching(text: string): string {
   return normalizeText(text)
-
-    .split(" ")
-
-    .filter(word => word.length > 0)
-
-    .length;
-
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/[^a-z0-9\s'-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/* ============================================================
- * Sentence Estimation
- *
- * Speech Recognition normally has
- * no punctuation.
- *
- * Therefore we estimate sentences
- * from conjunctions and idea starters.
- * ============================================================
- */
-
-function estimateSentences(
-  text: string
-): number {
-
-  const lower =
-    normalizeText(text).toLowerCase();
-
-  const starters = [
-
-    "my name",
-
-    "i am",
-
-    "i'm",
-
-    "i work",
-
-    "i study",
-
-    "i like",
-
-    "in my free time",
-
-    "because",
-
-    "after",
-
-    "before",
-
-    "then",
-
-    "finally",
-
-    "also",
-
-    "besides",
-
-    "however",
-
-    "although"
-
-  ];
-
-  let count = 1;
-
-  starters.forEach(item => {
-
-    const matches =
-      lower.match(
-        new RegExp(item, "g")
-      );
-
-    if (matches) {
-
-      count += matches.length - 1;
-
-    }
-
-  });
-
-  return Math.max(
-    1,
-    Math.min(count, 10)
-  );
-
+function estimateWords(text: string): number {
+  const normalized = normalizeText(text);
+  return normalized ? normalized.split(/\s+/).filter(Boolean).length : 0;
 }
 
-/* ============================================================
- * Expected Topics
- * ============================================================
- */
+function estimateSentences(text: string): number {
+  const normalized = normalizeText(text);
 
-function expectedTopics(
-  question: string
-): string[] {
-
-  const lower =
-    question.toLowerCase();
-
-  if (
-    lower.includes("tell me about yourself")
-  ) {
-
-    return [
-
-      "name",
-
-      "age",
-
-      "education",
-
-      "job",
-
-      "hobby",
-
-      "strength",
-
-      "goal"
-
-    ];
-
+  if (!normalized) {
+    return 0;
   }
 
-  if (
-    lower.includes("strength")
-  ) {
+  // Prefer real punctuation when it is available in typed answers or
+  // speech-recognition output that preserves sentence boundaries.
+  const punctuated = normalized
+    .split(/[.!?]+/)
+    .map((part) => part.trim())
+    .filter(Boolean).length;
 
-    return [
-
-      "skill",
-
-      "experience",
-
-      "example"
-
-    ];
-
+  if (punctuated >= 2) {
+    return Math.min(punctuated, 10);
   }
 
-  if (
-    lower.includes("weakness")
-  ) {
+  // Web Speech often returns no punctuation. In that case, estimate idea
+  // boundaries from common connectors and repeated sentence starters.
+  const lower = normalizeForMatching(normalized);
+  const boundaryPattern = /\b(?:and then|but|however|because|also|finally|in addition|for example|for instance|my goal is|i also|i have|i am|i'm|i work|i study|i enjoy|i like|i want|i hope)\b/g;
+  const matches = lower.match(boundaryPattern) ?? [];
 
-    return [
+  // The first clause is already one sentence. Additional meaningful
+  // starters/connectors suggest another spoken sentence or idea unit.
+  const estimated = 1 + Math.max(0, matches.length - 1);
+  return Math.max(1, Math.min(estimated, 10));
+}
 
-      "weakness",
+const TOPIC_ALIASES: Record<string, string[]> = {
+  name: ["my name", "i am", "i'm", "called"],
+  experience: ["experience", "worked", "work", "job", "internship", "project"],
+  skills: ["skill", "skills", "communication", "technical", "problem solving", "teamwork"],
+  personality: ["responsible", "hard-working", "hardworking", "positive", "adaptable", "friendly", "patient", "motivated"],
+  "career growth": ["career", "grow", "growth", "future", "goal", "develop", "improve"],
+  responsibility: ["responsible", "responsibility", "on time", "reliable"],
+  teamwork: ["team", "teamwork", "colleague", "cooperate", "support others"],
+  learning: ["learn", "learning", "improve", "feedback", "develop"],
+  communication: ["communicate", "communication", "listen", "speaking"],
+  "company reputation": ["reputation", "well-known", "professional company", "respected company"],
+  growth: ["growth", "grow", "develop", "career opportunity", "opportunity"],
+  values: ["value", "values", "quality", "culture", "mission"],
+  team: ["team", "colleagues", "people", "cooperate"],
+  value: ["value", "contribute", "contribution", "benefit", "help the company"],
+  responsible: ["responsible", "reliable", "on time"],
+  adaptable: ["adapt", "adaptable", "flexible", "change"],
+  motivation: ["motivate", "motivated", "motivation", "enthusiastic"],
+  "short-term": ["short term", "short-term", "next year", "one or two years", "near future"],
+  performance: ["performance", "perform", "results", "expectations"],
+  career: ["career", "profession", "professional"],
+  leadership: ["leadership", "leader", "lead", "manage"],
+  pressure: ["pressure", "stress", "deadline", "busy"],
+  priorities: ["priority", "priorities", "important first"],
+  "time management": ["time management", "organize my time", "schedule", "deadline"],
+  calm: ["calm", "focused", "stay focused"],
+  support: ["support", "help", "assist"],
+  cooperation: ["cooperate", "cooperation", "work together", "collaborate"],
+  adapt: ["adapt", "adjust", "change"],
+  "open-minded": ["open-minded", "open minded", "positive attitude"],
+  flexible: ["flexible", "adaptable", "adjust"],
+  contribution: ["contribute", "contribution", "value", "useful"],
+  progress: ["progress", "improve", "development", "grow"],
+};
 
-      "improvement",
+function canonicalTopic(topic: string): string {
+  return normalizeForMatching(topic);
+}
 
-      "solution"
+function topicIsCovered(answer: string, topic: string): boolean {
+  const normalizedAnswer = normalizeForMatching(answer);
+  const normalizedTopic = canonicalTopic(topic);
+  const aliases = TOPIC_ALIASES[normalizedTopic] ?? [normalizedTopic];
 
-    ];
+  return aliases.some((alias) => normalizedAnswer.includes(normalizeForMatching(alias)));
+}
 
+function expectedTopics(question: InterviewQuestion): string[] {
+  if (Array.isArray(question.keywords) && question.keywords.length > 0) {
+    return [...new Set(question.keywords.map(canonicalTopic).filter(Boolean))];
+  }
+
+  const lower = question.title.toLowerCase();
+
+  if (lower.includes("introduce yourself") || lower.includes("tell me about yourself")) {
+    return ["name", "experience", "skills", "personality", "career growth"];
   }
 
   return [];
-
-}
-/* ============================================================
- * Topic Detection
- * ============================================================
- */
-
-function detectTopics(
-  answer: string
-): string[] {
-
-  const lower =
-    normalizeText(answer).toLowerCase();
-
-  const topics: string[] = [];
-
-  const dictionary: Record<string, string[]> = {
-
-    name: [
-
-      "my name",
-
-      "i'm",
-
-      "i am"
-
-    ],
-
-    age: [
-
-      "years old",
-
-      "year old"
-
-    ],
-
-    education: [
-
-      "university",
-
-      "college",
-
-      "student",
-
-      "graduate",
-
-      "degree",
-
-      "school"
-
-    ],
-
-    job: [
-
-      "work",
-
-      "teacher",
-
-      "developer",
-
-      "engineer",
-
-      "lecturer",
-
-      "employee",
-
-      "company",
-
-      "office"
-
-    ],
-
-    hobby: [
-
-      "like",
-
-      "love",
-
-      "enjoy",
-
-      "football",
-
-      "music",
-
-      "reading",
-
-      "travel",
-
-      "movie",
-
-      "sport"
-
-    ],
-
-    strength: [
-
-      "hardworking",
-
-      "friendly",
-
-      "patient",
-
-      "responsible",
-
-      "creative",
-
-      "confident"
-
-    ],
-
-    goal: [
-
-      "future",
-
-      "goal",
-
-      "dream",
-
-      "hope",
-
-      "want to",
-
-      "plan to"
-
-    ]
-
-  };
-
-  Object.entries(dictionary).forEach(
-
-    ([topic, keywords]) => {
-
-      const found = keywords.some(
-
-        keyword => lower.includes(keyword)
-
-      );
-
-      if (found) {
-
-        topics.push(topic);
-
-      }
-
-    }
-
-  );
-
-  return [...new Set(topics)];
-
 }
 
-/* ============================================================
- * Coverage Analysis
- * ============================================================
- */
+function analyseCoverage(question: InterviewQuestion, answer: string) {
+  const expected = expectedTopics(question);
+  const coveredTopics = expected.filter((topic) => topicIsCovered(answer, topic));
+  const missingTopics = expected.filter((topic) => !topicIsCovered(answer, topic));
 
-function analyseCoverage(
-
-  expected: string[],
-
-  detected: string[]
-
-) {
-
-  const coveredTopics =
-
-    expected.filter(
-
-      item => detected.includes(item)
-
-    );
-
-  const missingTopics =
-
-    expected.filter(
-
-      item => !detected.includes(item)
-
-    );
-
-  const extraTopics =
-
-    detected.filter(
-
-      item => !expected.includes(item)
-
-    );
-
-  const coverageScore =
-
-    expected.length === 0
-
-      ? 100
-
-      : Math.round(
-
-          coveredTopics.length *
-
-          100 /
-
-          expected.length
-
-        );
+  const coverageScore = expected.length > 0
+    ? Math.round((coveredTopics.length / expected.length) * 100)
+    : 0;
 
   return {
-
     coveredTopics,
-
     missingTopics,
-
-    extraTopics,
-
-    coverageScore
-
+    extraTopics: [] as string[],
+    coverageScore,
   };
-
 }
 
-/* ============================================================
- * Structure Score
- * ============================================================
- */
-
-function calculateStructureScore(
-
-  estimatedSentences: number
-
-): number {
-
-  if (
-
-    estimatedSentences >= 4 &&
-
-    estimatedSentences <= 6
-
-  ) {
-
-    return 100;
-
-  }
-
-  if (
-
-    estimatedSentences === 3 ||
-
-    estimatedSentences === 7
-
-  ) {
-
-    return 85;
-
-  }
-
-  if (
-
-    estimatedSentences === 2 ||
-
-    estimatedSentences === 8
-
-  ) {
-
-    return 70;
-
-  }
-
-  return 50;
-
+function calculateStructureScore(sentences: number, words: number): number {
+  if (words === 0) return 0;
+  if (sentences >= 3 && sentences <= 5) return 100;
+  if (sentences === 2 || sentences === 6) return 75;
+  if (sentences === 1) return words >= 25 ? 60 : 40;
+  return 60;
 }
 
-/* ============================================================
- * Length Score
- * ============================================================
- */
-
-function calculateLengthScore(
-
-  estimatedWords: number
-
-): number {
-
-  if (
-
-    estimatedWords >= 35 &&
-
-    estimatedWords <= 80
-
-  ) {
-
-    return 100;
-
-  }
-
-  if (
-
-    estimatedWords >= 25 &&
-
-    estimatedWords < 35
-
-  ) {
-
-    return 85;
-
-  }
-
-  if (
-
-    estimatedWords > 80 &&
-
-    estimatedWords <= 110
-
-  ) {
-
-    return 80;
-
-  }
-
-  if (
-
-    estimatedWords >= 15
-
-  ) {
-
-    return 65;
-
-  }
-
-  return 40;
-
-}
-/* ============================================================
- * Overall Score
- * ============================================================
- */
-
-function calculateOverallScore(
-
-  coverage: number,
-
-  structure: number,
-
-  length: number
-
-): number {
-
-  return Math.round(
-
-    coverage * 0.5 +
-
-    structure * 0.3 +
-
-    length * 0.2
-
-  );
-
+function calculateLengthScore(words: number): number {
+  if (words >= 45 && words <= 100) return 100;
+  if (words >= 30 && words < 45) return 85;
+  if (words >= 20 && words < 30) return 70;
+  if (words >= 12 && words < 20) return 45;
+  if (words > 100 && words <= 130) return 80;
+  if (words > 130) return 60;
+  return words > 0 ? 25 : 0;
 }
 
-/* ============================================================
- * Teacher Feedback
- * ============================================================
- */
+function calculateOverallScore(coverage: number, structure: number, length: number): number {
+  // Content coverage is the most important part of an interview answer.
+  return Math.round(coverage * 0.6 + structure * 0.25 + length * 0.15);
+}
 
 function generateFeedback(
-
   coveredTopics: string[],
-
   missingTopics: string[],
-
-  overallScore: number
-
+  overallScore: number,
+  sentences: number,
+  words: number
 ): string {
+  const messages: string[] = [];
 
-  let feedback = "";
-
-  if (overallScore >= 90) {
-
-    feedback +=
-      "Excellent answer. ";
-
-  }
-
-  else if (overallScore >= 75) {
-
-    feedback +=
-      "Good answer. ";
-
-  }
-
-  else if (overallScore >= 60) {
-
-    feedback +=
-      "Your answer is understandable. ";
-
-  }
-
-  else {
-
-    feedback +=
-      "Your answer needs more development. ";
-
-  }
+  if (overallScore >= 85) messages.push("Your answer is focused and well developed.");
+  else if (overallScore >= 70) messages.push("Your answer covers several relevant ideas.");
+  else if (overallScore >= 50) messages.push("Your answer is understandable but needs more relevant detail.");
+  else messages.push("Your answer is too limited for this interview question.");
 
   if (coveredTopics.length > 0) {
-
-    feedback +=
-
-      `You covered ${coveredTopics.length} important topic`;
-
-    if (coveredTopics.length > 1) {
-
-      feedback += "s";
-
-    }
-
-    feedback += ". ";
-
+    messages.push(`Covered ideas: ${coveredTopics.join(", ")}.`);
   }
 
   if (missingTopics.length > 0) {
-
-    feedback +=
-
-      "Consider adding: " +
-
-      missingTopics.join(", ") +
-
-      ".";
-
+    messages.push(`Add information about: ${missingTopics.join(", ")}.`);
   }
 
-  return feedback.trim();
+  if (sentences < 2 || words < 20) {
+    messages.push("Develop the answer into at least two or three clear sentences.");
+  }
 
+  return messages.join(" ");
 }
-
-/* ============================================================
- * Public API
- * ============================================================
- */
 
 export function analyzeFocus(
-
-  question: string,
-
+  question: InterviewQuestion,
   answer: string
-
 ): FocusAnalysis {
-
-  const normalized =
-
-    normalizeText(answer);
-
-  const estimatedWords =
-
-    estimateWords(normalized);
-
-  const estimatedSentences =
-
-    estimateSentences(normalized);
-
-  const detectedTopics =
-
-    detectTopics(normalized);
-
-  const expected =
-
-    expectedTopics(question);
-
-  const coverage =
-
-    analyseCoverage(
-
-      expected,
-
-      detectedTopics
-
-    );
-
-  const structureScore =
-
-    calculateStructureScore(
-
-      estimatedSentences
-
-    );
-
-  const lengthScore =
-
-    calculateLengthScore(
-
-      estimatedWords
-
-    );
-
-  const overallScore =
-
-    calculateOverallScore(
-
-      coverage.coverageScore,
-
-      structureScore,
-
-      lengthScore
-
-    );
-
-  const feedback =
-
-    generateFeedback(
-
-      coverage.coveredTopics,
-
-      coverage.missingTopics,
-
-      overallScore
-
-    );
+  const normalized = normalizeText(answer);
+  const estimatedWords = estimateWords(normalized);
+  const estimatedSentences = estimateSentences(normalized);
+  const coverage = analyseCoverage(question, normalized);
+  const structureScore = calculateStructureScore(estimatedSentences, estimatedWords);
+  const lengthScore = calculateLengthScore(estimatedWords);
+  const overallScore = calculateOverallScore(
+    coverage.coverageScore,
+    structureScore,
+    lengthScore
+  );
 
   return {
-
     overallScore,
-
-    coverageScore:
-
-      coverage.coverageScore,
-
+    coverageScore: coverage.coverageScore,
     structureScore,
-
     lengthScore,
-
     estimatedWords,
-
     estimatedSentences,
-
-    totalIdeas:
-
-      coverage.coveredTopics.length,
-
-    coveredTopics:
-
+    totalIdeas: coverage.coveredTopics.length,
+    coveredTopics: coverage.coveredTopics,
+    missingTopics: coverage.missingTopics,
+    extraTopics: coverage.extraTopics,
+    feedback: generateFeedback(
       coverage.coveredTopics,
-
-    missingTopics:
-
       coverage.missingTopics,
-
-    extraTopics:
-
-      coverage.extraTopics,
-
-    feedback,
-
+      overallScore,
+      estimatedSentences,
+      estimatedWords
+    ),
   };
-
 }
-
-/* ============================================================
- * End of File
- * ============================================================
- */

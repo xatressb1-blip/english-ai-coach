@@ -14,104 +14,66 @@ import FocusAnalysisCard from "./FocusAnalysisCard";
 import CoachFeedbackCard from "./CoachFeedbackCard";
 
 interface AIEvaluationProps {
-  question?: InterviewQuestion;
+  question: InterviewQuestion;
 }
 
 export default function AIEvaluation({ question }: AIEvaluationProps) {
-  const { transcript, setTranscript } = useSpeechContext();
-
-  const {
-    result,
-    loading,
-    error,
-    evaluate,
-  } = useEvaluation(question);
+  const { transcript } = useSpeechContext();
+  const { result, loading, error, evaluate } = useEvaluation(question);
+  const hasAnswer = transcript.trim().length > 0;
 
   return (
-    <section className="mt-8 rounded-xl border bg-white p-4 shadow-md sm:mt-10 sm:p-6 lg:rounded-2xl lg:p-8 lg:shadow-lg">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            🤖 AI Evaluation
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500 sm:text-base">
-            Type your answer below or use the microphone. You can edit the transcript before asking AI to evaluate it.
+          <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">🤖 AI Feedback</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Complete your recording, review the transcript above, then ask AI for detailed feedback.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={evaluate}
+          disabled={loading || !hasAnswer}
+          className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+        >
+          {loading ? "Evaluating..." : "✨ Evaluate Answer"}
+        </button>
       </div>
 
-      <div className="mt-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <label
-            htmlFor="candidate-answer"
-            className="text-base font-bold text-gray-800 sm:text-lg"
-          >
-            Your Answer
-          </label>
-
-          <span className="text-xs text-gray-500 sm:text-sm">
-            {transcript.trim().length} characters
-          </span>
+      {!hasAnswer && !loading && !result && !error && (
+        <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+          <p className="font-semibold text-slate-700">Your feedback will appear here.</p>
+          <p className="mt-1 text-sm text-slate-500">Record or type your practice answer first.</p>
         </div>
+      )}
 
-        <textarea
-          id="candidate-answer"
-          value={transcript}
-          onChange={(event) => setTranscript(event.target.value)}
-          disabled={loading}
-          rows={9}
-          placeholder="Type your interview answer here, or use Start Recording and edit the transcript afterward..."
-          className="mt-3 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-4 text-sm leading-7 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-gray-100 sm:text-base"
-        />
-
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-gray-500">
-            Speak naturally in your own words. The sample answer is only a guide, not a script that must be copied.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setTranscript("")}
-            disabled={loading || !transcript}
-            className="w-full shrink-0 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-          >
-            Clear Answer
-          </button>
+      {hasAnswer && !loading && !result && !error && (
+        <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+          Your answer is ready. Select <strong>Evaluate Answer</strong> when you are satisfied with the transcript.
         </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={evaluate}
-        disabled={loading || !transcript.trim()}
-        className="mt-6 w-full rounded-xl bg-green-600 px-6 py-3.5 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400 sm:w-auto"
-      >
-        {loading ? "Evaluating..." : "✨ Evaluate Answer"}
-      </button>
+      )}
 
       {error && (
-        <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 sm:p-5">
-          <h3 className="font-bold text-red-700">Error</h3>
-          <p className="mt-2 text-sm text-red-600 sm:text-base">{error}</p>
+        <div className="mt-5 rounded-xl border border-red-300 bg-red-50 p-4">
+          <h3 className="font-bold text-red-700">Unable to evaluate</h3>
+          <p className="mt-2 text-sm text-red-600">{error}</p>
         </div>
       )}
 
       {loading && (
-        <div className="mt-8 flex flex-col items-center sm:mt-10">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent sm:h-14 sm:w-14" />
-          <p className="mt-5 text-center text-base text-gray-600 sm:text-lg">
-            🤖 AI Recruiter is analysing your interview...
+        <div className="mt-6 flex flex-col items-center rounded-xl bg-slate-50 p-6">
+          <div className="h-11 w-11 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          <p className="mt-4 text-center text-sm font-semibold text-slate-600 sm:text-base">
+            AI recruiter is analysing your answer...
           </p>
         </div>
       )}
 
       {!loading && result && (
-        <>
-          <div className="mt-8">
-            <OverallBadge result={result} />
-          </div>
-
+        <div className="mt-6">
+          <OverallBadge result={result} />
           <ScoreGrid result={result} />
           <FocusAnalysisCard analysis={result.focusAnalysis} />
           <CoachFeedbackCard coach={result.coach} />
@@ -119,18 +81,6 @@ export default function AIEvaluation({ question }: AIEvaluationProps) {
           <SuggestionsCard suggestions={result.suggestions} />
           <ImprovedAnswerCard improvedAnswer={result.improvedAnswer} />
           <TranscriptCard transcript={transcript} />
-        </>
-      )}
-
-      {!loading && !result && !error && (
-        <div className="mt-8 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center sm:mt-10 sm:p-8 lg:p-10">
-          <div className="text-5xl sm:text-6xl">🤖</div>
-          <h3 className="mt-4 text-xl font-bold text-gray-700 sm:text-2xl">
-            AI Interview Coach
-          </h3>
-          <p className="mt-3 text-sm leading-7 text-gray-500 sm:text-base sm:leading-8">
-            Enter your answer above or record your voice, then click <strong>Evaluate Answer</strong> to receive detailed feedback.
-          </p>
         </div>
       )}
     </section>

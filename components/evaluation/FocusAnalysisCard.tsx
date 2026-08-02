@@ -6,160 +6,77 @@ interface Props {
   analysis: FocusAnalysis;
 }
 
-export default function FocusAnalysisCard({
-  analysis,
-}: Props) {
+function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-2xl border bg-white p-8 shadow-sm">
+    <div className={`rounded-xl p-4 ${tone}`}>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold sm:text-3xl">{value}%</p>
+    </div>
+  );
+}
 
-      <h2 className="text-2xl font-bold">
-        🎯 Focus Analysis
-      </h2>
+export default function FocusAnalysisCard({ analysis }: Props) {
+  return (
+    <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">🎯 Answer Focus</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">
+        This section measures content coverage, answer structure, and response length. It is separate from the English score above.
+      </p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4">
-
-        <div className="rounded-xl bg-blue-50 p-4">
-          <p className="text-sm text-gray-500">
-            Overall
-          </p>
-
-          <p className="text-3xl font-bold text-blue-600">
-            {analysis.overallScore}%
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-green-50 p-4">
-          <p className="text-sm text-gray-500">
-            Coverage
-          </p>
-
-          <p className="text-3xl font-bold text-green-600">
-            {analysis.coverageScore}%
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-yellow-50 p-4">
-          <p className="text-sm text-gray-500">
-            Structure
-          </p>
-
-          <p className="text-3xl font-bold text-yellow-600">
-            {analysis.structureScore}%
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-purple-50 p-4">
-          <p className="text-sm text-gray-500">
-            Length
-          </p>
-
-          <p className="text-3xl font-bold text-purple-600">
-            {analysis.lengthScore}%
-          </p>
-        </div>
-
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-4">
+        <Metric label="Focus" value={analysis.overallScore} tone="bg-blue-50 text-blue-700" />
+        <Metric label="Key ideas covered" value={analysis.coverageScore} tone="bg-emerald-50 text-emerald-700" />
+        <Metric label="Structure" value={analysis.structureScore} tone="bg-amber-50 text-amber-700" />
+        <Metric label="Answer length" value={analysis.lengthScore} tone="bg-violet-50 text-violet-700" />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-4 text-center">
+        <div>
+          <p className="text-xl font-bold text-slate-900">{analysis.estimatedWords}</p>
+          <p className="mt-1 text-xs text-slate-500">Words</p>
+        </div>
+        <div>
+          <p className="text-xl font-bold text-slate-900">{analysis.estimatedSentences}</p>
+          <p className="mt-1 text-xs text-slate-500">Sentences</p>
+        </div>
+        <div>
+          <p className="text-xl font-bold text-slate-900">{analysis.totalIdeas}</p>
+          <p className="mt-1 text-xs text-slate-500">Key ideas</p>
+        </div>
+      </div>
 
-        <h3 className="font-semibold">
-          📊 Statistics
-        </h3>
-
-        <div className="mt-4 space-y-2">
-
-          <div className="flex justify-between">
-
-            <span>Estimated Words</span>
-
-            <strong>
-              {analysis.estimatedWords}
-            </strong>
-
+      {analysis.coveredTopics.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-semibold text-slate-800">✅ Covered ideas</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {analysis.coveredTopics.map((topic) => (
+              <span key={topic} className="rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-800">
+                {topic}
+              </span>
+            ))}
           </div>
+        </div>
+      )}
 
-          <div className="flex justify-between">
-
-            <span>Estimated Sentences</span>
-
-            <strong>
-              {analysis.estimatedSentences}
-            </strong>
-
+      {analysis.missingTopics.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-semibold text-slate-800">⚠️ Ideas to add</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {analysis.missingTopics.map((topic) => (
+              <span key={topic} className="rounded-full bg-red-100 px-3 py-1 text-sm text-red-800">
+                {topic}
+              </span>
+            ))}
           </div>
-
-          <div className="flex justify-between">
-
-            <span>Detected Ideas</span>
-
-            <strong>
-              {analysis.totalIdeas}
-            </strong>
-
-          </div>
-
         </div>
+      )}
 
-      </div>
-
-      <div className="mt-8">
-
-        <h3 className="font-semibold">
-          ✅ Covered Topics
-        </h3>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-
-          {analysis.coveredTopics.map(topic => (
-
-            <span
-              key={topic}
-              className="rounded-full bg-green-100 px-3 py-1 text-sm"
-            >
-              ✓ {topic}
-            </span>
-
-          ))}
-
-        </div>
-
-      </div>
-
-      <div className="mt-8">
-
-        <h3 className="font-semibold">
-          ⚠️ Missing Topics
-        </h3>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-
-          {analysis.missingTopics.map(topic => (
-
-            <span
-              key={topic}
-              className="rounded-full bg-red-100 px-3 py-1 text-sm"
-            >
-              {topic}
-            </span>
-
-          ))}
-
-        </div>
-
-      </div>
-
-      <div className="mt-8 rounded-xl bg-blue-50 p-5">
-
-        <h3 className="font-bold">
-          🤖 AI Coach
-        </h3>
-
-        <p className="mt-3 text-gray-700 leading-7">
+      <div className="mt-6 rounded-xl bg-blue-50 p-4 sm:p-5">
+        <h3 className="font-bold text-blue-950">🤖 Focus coaching</h3>
+        <p className="mt-2 text-sm leading-7 text-blue-900 sm:text-base">
           {analysis.feedback}
         </p>
-
       </div>
-
     </div>
   );
 }

@@ -133,7 +133,7 @@ export async function evaluateInterview(
 ): Promise<EvaluationResult> {
   validateTranscript(transcript);
 
-  const focusAnalysis = analyzeFocus(question.title, transcript);
+  const focusAnalysis = analyzeFocus(question, transcript);
   const result = await requestEvaluation(question, transcript);
 
   // Build the initial result first. The coach message is finalized only
