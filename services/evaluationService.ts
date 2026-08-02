@@ -40,6 +40,7 @@ async function requestEvaluation(
           vocabularyLevel: question.vocabularyLevel,
           sampleAnswer: question.sampleAnswer,
           commonMistakes: question.commonMistakes,
+          expectedIdeas: question.expectedIdeas ?? [],
         },
       }),
       signal: controller.signal,
@@ -133,8 +134,12 @@ export async function evaluateInterview(
 ): Promise<EvaluationResult> {
   validateTranscript(transcript);
 
-  const focusAnalysis = analyzeFocus(question, transcript);
   const result = await requestEvaluation(question, transcript);
+  const focusAnalysis = analyzeFocus(
+    question,
+    transcript,
+    result.contentAssessment
+  );
 
   // Build the initial result first. The coach message is finalized only
   // after the same AI scores used by the overall badge are available.

@@ -4,148 +4,73 @@
 // Evaluation Data Model
 // ======================================================
 
-/**
- * Score with AI feedback
- */
 export interface ScoreDetail {
-
   score: number;
-
   comment: string;
-
 }
 
-export interface GrammarResult
-  extends ScoreDetail {
-
+export interface GrammarResult extends ScoreDetail {
   mistakes: string[];
-
 }
 
-/**
- * Focus Analyzer
- */
+export type IdeaCoverageStatus = "covered" | "partial" | "missing";
+
+export interface IdeaAssessment {
+  id: string;
+  label: string;
+  status: IdeaCoverageStatus;
+  evidence: string;
+  coachingTip: string;
+}
+
 export interface FocusAnalysis {
-
-  /*
-   * Overall focus score
-   * 0 - 100
-   */
-
   overallScore: number;
-
-  /*
-   * Coverage
-   */
-
   coverageScore: number;
-
-  /*
-   * Structure
-   */
-
   structureScore: number;
-
-  /*
-   * Length
-   */
-
   lengthScore: number;
-
-  /*
-   * Estimated statistics
-   */
-
+  evidenceQualityScore: number;
   estimatedWords: number;
-
   estimatedSentences: number;
-
   totalIdeas: number;
-
-  /*
-   * Topics
-   */
-
   coveredTopics: string[];
-
+  partialTopics: string[];
   missingTopics: string[];
-
   extraTopics: string[];
-
-  /*
-   * AI Feedback
-   */
-
+  ideaAssessments: IdeaAssessment[];
   feedback: string;
-
 }
+
 export interface CoachResult {
-
   good: boolean;
-
   feedback: string[];
-
 }
+
 export interface EvaluationResult {
-
   overall: number;
-
   overallFeedback: string;
-
   grammar: GrammarResult;
-
   vocabulary: ScoreDetail;
-
   pronunciation: ScoreDetail;
-
   fluency: ScoreDetail;
-
   relevance: ScoreDetail;
-
   confidence: ScoreDetail;
-
   suggestions: string[];
-
- focusAnalysis: FocusAnalysis;
-
-coach: CoachResult;
-
-improvedAnswer: string;
-
+  focusAnalysis: FocusAnalysis;
+  coach: CoachResult;
+  improvedAnswer: string;
 }
 
 export function calculateOverall(
-
-  result: Omit<
-
-    EvaluationResult,
-
-    "overall" | "overallFeedback"
-
-  >
-
+  result: Omit<EvaluationResult, "overall" | "overallFeedback">
 ): number {
-
   const average = (
-
     result.grammar.score +
-
     result.vocabulary.score +
-
     result.pronunciation.score +
-
     result.fluency.score +
-
     result.relevance.score +
-
     result.confidence.score
-
   ) / 6;
 
-  return Number(
-
-    average.toFixed(1)
-
-  );
-
+  return Number(average.toFixed(1));
 }

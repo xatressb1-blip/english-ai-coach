@@ -10,6 +10,12 @@ interface EvaluationQuestionPayload {
   vocabularyLevel?: string;
   sampleAnswer?: string;
   commonMistakes?: string[];
+  expectedIdeas?: Array<{
+    id: string;
+    label: string;
+    description: string;
+    weight?: number;
+  }>;
 }
 
 export async function POST(request: Request) {
@@ -57,6 +63,9 @@ export async function POST(request: Request) {
         sampleAnswer: question.sampleAnswer,
         commonMistakes: Array.isArray(question.commonMistakes)
           ? question.commonMistakes
+          : [],
+        expectedIdeas: Array.isArray(question.expectedIdeas)
+          ? question.expectedIdeas
           : [],
       },
     });

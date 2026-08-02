@@ -195,6 +195,17 @@ export interface GeminiEvaluationResult {
   mistakes: string[];
   suggestions: string[];
   improvedAnswer: string;
+  contentAssessment?: {
+    criteria: Array<{
+      id: string;
+      label: string;
+      status: "covered" | "partial" | "missing";
+      evidence: string;
+      coachingTip: string;
+    }>;
+    evidenceQualityScore: number;
+    summary: string;
+  };
 }
 
 export interface EvaluationQuestionContext {
@@ -206,6 +217,12 @@ export interface EvaluationQuestionContext {
   vocabularyLevel: string;
   sampleAnswer: string;
   commonMistakes: string[];
+  expectedIdeas: Array<{
+    id: string;
+    label: string;
+    description: string;
+    weight?: number;
+  }>;
 }
 
 interface GenerateEvaluationInput {
@@ -251,6 +268,9 @@ ${question.sampleAnswer}
 COMMON MISTAKES TO WATCH FOR:
 ${question.commonMistakes.join("; ")}
 
+QUESTION-SPECIFIC CONTENT CRITERIA:
+${JSON.stringify(question.expectedIdeas, null, 2)}
+
 CANDIDATE ANSWER:
 ${transcript}
 
@@ -266,6 +286,15 @@ SCORING RULES:
 - Keep feedback encouraging, specific, and suitable for an English learner.
 - The improved answer must preserve the candidate's meaning, correct errors, and sound natural and confident.
 - Do not copy the sample answer word for word.
+- Evaluate every question-specific content criterion semantically, not by keyword matching alone.
+- Mark a criterion "covered" only when the candidate clearly communicates the idea.
+- Mark it "partial" when the idea is hinted at but lacks clarity, detail, or support.
+- Mark it "missing" when the idea is absent, contradicted, or represented only by an isolated word.
+- Evidence must quote or closely paraphrase a short part of the candidate answer. If missing, use an empty string.
+- Evidence quality score is 0-100 and reflects specificity, examples, actions, outcomes, measurable details, and job connection.
+- Keep the content summary consistent with the criterion statuses and the relevance score.
+- Return exactly one criteria item for each supplied criterion, preserving its id and label.
+- If QUESTION-SPECIFIC CONTENT CRITERIA is empty, return an empty criteria array.
 
 Return ONLY valid JSON with exactly this structure:
 {
@@ -284,7 +313,20 @@ Return ONLY valid JSON with exactly this structure:
   "overallFeedback": "",
   "mistakes": [],
   "suggestions": [],
-  "improvedAnswer": ""
+  "improvedAnswer": "",
+  "contentAssessment": {
+    "criteria": [
+      {
+        "id": "",
+        "label": "",
+        "status": "covered",
+        "evidence": "",
+        "coachingTip": ""
+      }
+    ],
+    "evidenceQualityScore": 0,
+    "summary": ""
+  }
 }
 `;
 

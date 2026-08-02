@@ -8,6 +8,13 @@ export interface EvaluationCriteria {
 
 export type TrainingLevel = "basic" | "advanced";
 
+export interface ExpectedIdea {
+  id: string;
+  label: string;
+  description: string;
+  weight?: number;
+}
+
 export interface InterviewQuestion {
   id: number;
   trainingLevel: TrainingLevel;
@@ -19,6 +26,7 @@ export interface InterviewQuestion {
   level: "Beginner" | "Intermediate" | "Advanced";
   duration: number;
   keywords: string[];
+  expectedIdeas?: ExpectedIdea[];
   grammarFocus: string[];
   vocabularyLevel: string;
   sampleAnswer: string;
