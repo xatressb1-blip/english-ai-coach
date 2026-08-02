@@ -147,3 +147,25 @@ export function getSavedRecruiterReports(): SavedRecruiterReport[] {
     return [];
   }
 }
+
+export function deleteSavedRecruiterReport(id: string): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const current = getSavedRecruiterReports();
+    const updated = current.filter((report) => report.id !== id);
+    localStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify(updated));
+  } catch {
+    // Keep the UI usable even when browser storage is unavailable.
+  }
+}
+
+export function clearSavedRecruiterReports(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(REPORT_STORAGE_KEY);
+  } catch {
+    // Keep the UI usable even when browser storage is unavailable.
+  }
+}

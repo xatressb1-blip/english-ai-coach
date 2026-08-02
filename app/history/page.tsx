@@ -1,5 +1,11 @@
-import HistoryPage from "@/components/history/HistoryPage";
+import Navbar from "@/components/Navbar";
+import RecruiterReportHistory from "@/components/history/RecruiterReportHistory";
 
 export default function Page() {
-  return <HistoryPage />;
+  return (
+    <>
+      <Navbar />
+      <RecruiterReportHistory />
+    </>
+  );
 }
