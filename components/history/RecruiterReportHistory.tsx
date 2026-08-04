@@ -12,6 +12,7 @@ import {
   SavedRecruiterReport,
   TrainingLevel,
 } from "@/types/interviewReport";
+import InterviewReview from "@/components/interview/InterviewReview";
 
 type LevelFilter = "all" | TrainingLevel;
 
@@ -234,6 +235,13 @@ export default function RecruiterReportHistory() {
                     </div>
                   ))}
                 </div>
+
+                <InterviewReview
+                  attempts={report.attempts ?? []}
+                  compact
+                  title="Xem lại từng câu trả lời"
+                  description="Mở từng câu để xem transcript, câu hỏi phụ, tiêu chí nội dung và câu trả lời gợi ý."
+                />
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-slate-500">

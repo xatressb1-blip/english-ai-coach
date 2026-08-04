@@ -9,6 +9,7 @@ import {
   saveRecruiterReport,
 } from "@/services/interviewReportService";
 import { RecruiterReport } from "@/types/interviewReport";
+import InterviewReview from "./InterviewReview";
 
 export default function FinalRecruiterReport() {
   const { attempts, candidateName, selectedLevel, resetInterview, selectedCompany, selectedJobRole, selectedRecruiter } = useInterviewContext();
@@ -141,6 +142,8 @@ export default function FinalRecruiterReport() {
           </ol>
         </div>
       </div>
+
+      <InterviewReview attempts={attempts} />
 
       <div className="flex flex-col gap-3 border-t border-slate-200 p-6 sm:flex-row sm:justify-center">
         <button onClick={resetInterview} className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white">Repeat This Level</button>

@@ -31,6 +31,7 @@ import {
   GoogleGenAI,
 
 } from "@google/genai";
+import type { FollowUpDecision, FollowUpRequest } from "@/types/followUp";
 
 /* ============================================================
  * Singleton
@@ -397,4 +398,52 @@ JSON FORMAT:
   "recommendedNextPractice": ["", "", ""]
 }
 `);
+}
+
+/* ============================================================
+ * Intelligent Follow-up Question
+ * ============================================================
+ */
+
+export async function generateFollowUpDecision(input: FollowUpRequest): Promise<FollowUpDecision> {
+  const prompt = `
+You are ${input.recruiterName || "a professional recruiter"} conducting a realistic entry-level job interview.
+
+CONTEXT:
+Candidate: ${input.candidateName || "Candidate"}
+Company: ${input.companyName || "the company"}
+Position: ${input.jobTitle || "the position"}
+Main interview question: ${input.mainQuestion}
+Candidate's answer: ${input.mainAnswer}
+Relevance score: ${input.relevanceScore}/10
+Content coverage score: ${input.contentCoverageScore}/100
+Partly covered ideas: ${input.partialIdeas.join(", ") || "None"}
+Missing ideas: ${input.missingIdeas.join(", ") || "None"}
+
+DECISION RULES:
+- Ask at most ONE short follow-up question.
+- Ask only when it would make the interview more realistic and reveal useful evidence.
+- Good reasons include: the answer is too general, lacks a concrete example, mentions an experience worth clarifying, gives a result without explaining the candidate's action, or does not directly answer the main question.
+- Do not ask a follow-up when the answer is already clear, specific, relevant, and sufficiently supported.
+- Do not ask for sensitive personal information, protected characteristics, salary history, health, family status, religion, politics, or anything unrelated to job performance.
+- The question must be natural spoken English, one sentence, no more than 22 words, and understandable to an English learner.
+- Do not repeat the main question.
+- Do not mention scores, coverage, missing ideas, AI, evaluation, or feedback.
+- If uncertain, choose shouldAsk=false.
+
+Return ONLY valid JSON:
+{
+  "shouldAsk": false,
+  "question": "",
+  "reason": ""
+}
+`;
+
+  const result = await generateJson<FollowUpDecision>(prompt);
+  const question = typeof result.question === "string" ? result.question.trim() : "";
+  return {
+    shouldAsk: Boolean(result.shouldAsk && question),
+    question: question.slice(0, 220),
+    reason: typeof result.reason === "string" ? result.reason.trim().slice(0, 240) : "",
+  };
 }
