@@ -46,6 +46,7 @@ export interface CoachResult {
 }
 
 export interface EvaluationResult {
+  evaluationVersion: string;
   overall: number;
   overallFeedback: string;
   grammar: GrammarResult;
@@ -61,7 +62,10 @@ export interface EvaluationResult {
 }
 
 export function calculateOverall(
-  result: Omit<EvaluationResult, "overall" | "overallFeedback">
+  result: Pick<
+    EvaluationResult,
+    "grammar" | "vocabulary" | "pronunciation" | "fluency" | "relevance" | "confidence"
+  >
 ): number {
   const average = (
     result.grammar.score +

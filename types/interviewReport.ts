@@ -14,6 +14,7 @@ export interface InterviewAttempt {
 }
 
 export interface RecruiterReport {
+  evaluationVersion?: string;
   candidateName: string;
   companyName?: string;
   companyIndustry?: string;

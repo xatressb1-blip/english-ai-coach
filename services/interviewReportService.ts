@@ -1,4 +1,5 @@
 import { CandidateQuestionResult } from "@/types/candidateQuestion";
+import { EVALUATION_VERSION } from "@/services/evaluationReliability";
 import {
   InterviewAttempt,
   RecruiterReport,
@@ -64,6 +65,7 @@ export function buildRecruiterReport(attempts: InterviewAttempt[], candidateName
         : "You are still developing interview readiness. Focus first on answering the question directly, using complete sentences, and giving one clear example.";
 
   return {
+    evaluationVersion: attempts[0]?.evaluation.evaluationVersion ?? EVALUATION_VERSION,
     candidateName,
     overallScore,
     readiness,
