@@ -6,6 +6,7 @@ import {
 } from "@/types/evaluation";
 import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { analyzeFocus } from "./focusAnalyzer";
+import { EVALUATION_VERSION } from "./evaluationReliability";
 
 const REQUEST_TIMEOUT = 30000;
 
@@ -108,6 +109,7 @@ function buildEvaluation(
   coach: EvaluationResult["coach"]
 ): EvaluationResult {
   return {
+    evaluationVersion: EVALUATION_VERSION,
     overall: 0,
     overallFeedback: result.overallFeedback ?? "",
     grammar: buildGrammar(result),
@@ -155,10 +157,6 @@ export async function evaluateInterview(
     fluency: evaluation.fluency,
     relevance: evaluation.relevance,
     confidence: evaluation.confidence,
-    suggestions: evaluation.suggestions,
-    focusAnalysis: evaluation.focusAnalysis,
-    coach: evaluation.coach,
-    improvedAnswer: evaluation.improvedAnswer,
   });
 
   // Keep the coaching verdict consistent with the displayed score.
