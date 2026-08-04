@@ -1,3 +1,4 @@
+import { CandidateQuestionResult } from "@/types/candidateQuestion";
 import {
   InterviewAttempt,
   RecruiterReport,
@@ -86,15 +87,19 @@ export async function requestIntelligentRecruiterReport(
   attempts: InterviewAttempt[],
   level: TrainingLevel,
   candidateName: string,
-  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string }
+  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string },
+  candidateQuestion?: CandidateQuestionResult | null
 ): Promise<RecruiterReport> {
-  const fallback = buildRecruiterReport(attempts, candidateName);
+  const fallback: RecruiterReport = {
+    ...buildRecruiterReport(attempts, candidateName),
+    candidateQuestion: candidateQuestion ?? undefined,
+  };
 
   try {
     const response = await fetch("/api/interview-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attempts, level, candidateName, interviewContext, fallback }),
+      body: JSON.stringify({ attempts, level, candidateName, interviewContext, candidateQuestion, fallback }),
     });
 
     const data = await response.json();
@@ -103,6 +108,7 @@ export async function requestIntelligentRecruiterReport(
     return {
       ...fallback,
       ...interviewContext,
+      candidateQuestion: candidateQuestion ?? undefined,
       recruiterImpression: data.report.recruiterImpression ?? fallback.recruiterImpression,
       strengths: Array.isArray(data.report.strengths) ? data.report.strengths.slice(0, 3) : fallback.strengths,
       improvements: Array.isArray(data.report.improvements) ? data.report.improvements.slice(0, 3) : fallback.improvements,
@@ -120,7 +126,8 @@ export function saveRecruiterReport(
   attempts: InterviewAttempt[],
   level: TrainingLevel,
   candidateName: string,
-  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string }
+  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string },
+  candidateQuestion?: CandidateQuestionResult | null
 ): SavedRecruiterReport | null {
   if (typeof window === "undefined") return null;
 
@@ -132,6 +139,7 @@ export function saveRecruiterReport(
     level,
     createdAt: new Date().toISOString(),
     attempts,
+    candidateQuestion: candidateQuestion ?? report.candidateQuestion,
   };
 
   try {

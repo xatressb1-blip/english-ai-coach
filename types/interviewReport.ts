@@ -1,5 +1,6 @@
 import { EvaluationResult } from "@/types/evaluation";
 import { SpeechMetrics } from "@/types/speechMetrics";
+import { CandidateQuestionResult } from "@/types/candidateQuestion";
 
 export type TrainingLevel = "basic" | "advanced";
 
@@ -27,6 +28,7 @@ export interface RecruiterReport {
   recommendedNextPractice: string[];
   bestAttempt: InterviewAttempt | null;
   weakestAttempt: InterviewAttempt | null;
+  candidateQuestion?: CandidateQuestionResult;
   scoreBreakdown: {
     grammar: number;
     vocabulary: number;

@@ -214,6 +214,24 @@ export default function RecruiterReportHistory() {
                   <p className="mt-2 text-sm leading-7 text-slate-600">{report.recruiterImpression}</p>
                 </div>
 
+                {report.candidateQuestion && (
+                  <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+                    <h3 className="font-bold text-cyan-900">Câu hỏi dành cho nhà tuyển dụng</h3>
+                    {report.candidateQuestion.skipped ? (
+                      <p className="mt-2 text-sm leading-7 text-slate-600">Ứng viên không đặt câu hỏi. {report.candidateQuestion.feedback}</p>
+                    ) : (
+                      <>
+                        <p className="mt-2 rounded-xl bg-white p-3 text-sm font-semibold leading-7 text-slate-800">“{report.candidateQuestion.transcript}”</p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                          <span className="rounded-full bg-white px-3 py-1 text-cyan-800">Mức độ phù hợp: {report.candidateQuestion.professionalRelevance}</span>
+                          <span className="rounded-full bg-white px-3 py-1 text-cyan-800">Mức độ quan tâm: {report.candidateQuestion.companyInterest}</span>
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">{report.candidateQuestion.feedback}</p>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
                   <ResultPanel
                     title="Câu trả lời tốt nhất"

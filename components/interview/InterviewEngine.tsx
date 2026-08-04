@@ -19,6 +19,7 @@ import InterviewPositionSetup from "./InterviewPositionSetup";
 import InterviewOpening from "./InterviewOpening";
 import InterviewClosing from "./InterviewClosing";
 import MockInterviewEvaluation from "./MockInterviewEvaluation";
+import CandidateQuestion from "./CandidateQuestion";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function InterviewEngine() {
   const [positionChosen, setPositionChosen] = useState(false);
   const [enteredRoom, setEnteredRoom] = useState(false);
   const [briefingCompleted, setBriefingCompleted] = useState(false);
+  const [candidateQuestionCompleted, setCandidateQuestionCompleted] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
   const { candidateName, currentQuestionIndex, totalQuestions, interviewFinished, flow, setFlow, startQuestion } = useInterviewContext();
@@ -43,6 +45,7 @@ export default function InterviewEngine() {
     return <InterviewOpening onBegin={() => { setBriefingCompleted(true); setFlow(readyInterview()); }} />;
   }
 
+  if (interviewFinished && !candidateQuestionCompleted) return <CandidateQuestion onComplete={() => setCandidateQuestionCompleted(true)} />;
   if (interviewFinished && !showReport) return <InterviewClosing onViewReport={() => setShowReport(true)} />;
   if (interviewFinished && showReport) return <FinalRecruiterReport />;
 

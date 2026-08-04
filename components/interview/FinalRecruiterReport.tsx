@@ -12,7 +12,7 @@ import { RecruiterReport } from "@/types/interviewReport";
 import InterviewReview from "./InterviewReview";
 
 export default function FinalRecruiterReport() {
-  const { attempts, candidateName, selectedLevel, resetInterview, selectedCompany, selectedJobRole, selectedRecruiter } = useInterviewContext();
+  const { attempts, candidateName, selectedLevel, resetInterview, selectedCompany, selectedJobRole, selectedRecruiter, candidateQuestion } = useInterviewContext();
   const fallback = useMemo(() => buildRecruiterReport(attempts, candidateName), [attempts, candidateName]);
   const [report, setReport] = useState<RecruiterReport>(fallback);
   const [loading, setLoading] = useState(true);
@@ -30,10 +30,10 @@ export default function FinalRecruiterReport() {
       recruiterName: selectedRecruiter.name,
     };
 
-    requestIntelligentRecruiterReport(attempts, selectedLevel, candidateName, interviewContext).then((result) => {
+    requestIntelligentRecruiterReport(attempts, selectedLevel, candidateName, interviewContext, candidateQuestion).then((result) => {
       if (!active) return;
       setReport(result);
-      saveRecruiterReport(result, attempts, selectedLevel, candidateName, interviewContext);
+      saveRecruiterReport(result, attempts, selectedLevel, candidateName, interviewContext, candidateQuestion);
       setSaved(true);
       setLoading(false);
     });
@@ -41,7 +41,7 @@ export default function FinalRecruiterReport() {
     return () => {
       active = false;
     };
-  }, [attempts, candidateName, selectedCompany, selectedJobRole, selectedLevel, selectedRecruiter]);
+  }, [attempts, candidateName, candidateQuestion, selectedCompany, selectedJobRole, selectedLevel, selectedRecruiter]);
 
   const breakdown = [
     ["Grammar", report.scoreBreakdown.grammar],
@@ -132,6 +132,34 @@ export default function FinalRecruiterReport() {
             <Link href={`/question/${report.weakestAttempt.questionId}`} className="mt-4 inline-block rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">
               Practice This Question Again
             </Link>
+          </div>
+        )}
+
+
+        {candidateQuestion && (
+          <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 lg:col-span-2">
+            <p className="text-sm font-bold uppercase text-cyan-700">Candidate Question</p>
+            {candidateQuestion.skipped ? (
+              <>
+                <p className="mt-3 font-semibold text-slate-800">No question was asked.</p>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{candidateQuestion.feedback}</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 rounded-xl bg-white p-4 font-semibold leading-7 text-slate-900">“{candidateQuestion.transcript}”</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Professional relevance</p>
+                    <p className="mt-1 text-lg font-black text-cyan-800">{candidateQuestion.professionalRelevance}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Company interest</p>
+                    <p className="mt-1 text-lg font-black text-cyan-800">{candidateQuestion.companyInterest}</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-7 text-slate-700">{candidateQuestion.feedback}</p>
+              </>
+            )}
           </div>
         )}
 

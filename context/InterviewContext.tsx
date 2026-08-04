@@ -7,6 +7,7 @@ import { InterviewAttempt, TrainingLevel } from "@/types/interviewReport";
 import { InterviewFlow, InterviewState, getInitialFlow, readyInterview, startInterview } from "@/services/interviewFlowService";
 import { defaultRecruiter, getRecruiterById, RecruiterProfile } from "@/data/recruiters";
 import { CompanyProfile, defaultCompany, defaultJobRole, getCompanyById, getJobRoleById, JobRoleProfile } from "@/data/interviewProfiles";
+import { CandidateQuestionResult } from "@/types/candidateQuestion";
 
 interface InterviewContextType {
   candidateName: string;
@@ -32,6 +33,8 @@ interface InterviewContextType {
   setFlow: React.Dispatch<React.SetStateAction<InterviewFlow>>;
   attempts: InterviewAttempt[];
   saveAttempt: (attempt: InterviewAttempt) => void;
+  candidateQuestion: CandidateQuestionResult | null;
+  setCandidateQuestion: (result: CandidateQuestionResult | null) => void;
   startQuestion: () => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
@@ -51,6 +54,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
   const [interviewFinished, setInterviewFinished] = useState(false);
   const [flow, setFlow] = useState<InterviewFlow>(getInitialFlow());
   const [attempts, setAttempts] = useState<InterviewAttempt[]>([]);
+  const [candidateQuestion, setCandidateQuestion] = useState<CandidateQuestionResult | null>(null);
 
   const selectedRecruiter = useMemo(() => getRecruiterById(selectedRecruiterId), [selectedRecruiterId]);
   const selectedCompany = useMemo(() => getCompanyById(selectedCompanyId), [selectedCompanyId]);
@@ -109,6 +113,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setCurrentQuestionIndex(0);
     setInterviewFinished(false);
     setAttempts([]);
+    setCandidateQuestion(null);
     setFlow(getInitialFlow());
   };
 
@@ -128,6 +133,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setCurrentQuestionIndex(0);
     setInterviewFinished(false);
     setAttempts([]);
+    setCandidateQuestion(null);
     setFlow(getInitialFlow());
   };
 
@@ -148,7 +154,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     <InterviewContext.Provider value={{
       candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole, setSelectedCompanyId, setSelectedJobRoleId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
-      interviewFinished, flow, setFlow, attempts, saveAttempt, startQuestion, nextQuestion,
+      interviewFinished, flow, setFlow, attempts, saveAttempt, candidateQuestion, setCandidateQuestion, startQuestion, nextQuestion,
       previousQuestion, finishInterview, resetInterview,
     }}>
       {children}
