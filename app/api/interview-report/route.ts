@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     const attempts = Array.isArray(body?.attempts) ? body.attempts : [];
     const level = body?.level as TrainingLevel;
     const candidateName = String(body?.candidateName ?? "Candidate").trim() || "Candidate";
+    const interviewContext = body?.interviewContext ?? {};
 
     if (!attempts.length) {
       return Response.json({ success: false, message: "No evaluated answers were provided." }, { status: 400 });
@@ -22,7 +23,14 @@ export async function POST(request: Request) {
         relevance: item.evaluation?.relevance?.score ?? 0,
         confidence: item.evaluation?.confidence?.score ?? 0,
         suggestions: Array.isArray(item.evaluation?.suggestions) ? item.evaluation.suggestions : [],
-      }))
+      })),
+      {
+        companyName: String(interviewContext.companyName ?? "Simulated Company"),
+        companyIndustry: String(interviewContext.companyIndustry ?? "General"),
+        jobTitle: String(interviewContext.jobTitle ?? "Entry-level position"),
+        jobDepartment: String(interviewContext.jobDepartment ?? "General"),
+        recruiterName: String(interviewContext.recruiterName ?? "AI Recruiter"),
+      }
     );
 
     return Response.json({ success: true, report });

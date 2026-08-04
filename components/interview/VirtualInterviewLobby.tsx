@@ -13,7 +13,7 @@ interface Props {
 type MicState = "idle" | "testing" | "ready" | "error";
 
 export default function VirtualInterviewLobby({ candidateName, totalQuestions, onEnter }: Props) {
-  const { selectedRecruiter, setSelectedRecruiterId } = useInterviewContext();
+  const { selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole } = useInterviewContext();
   const [micState, setMicState] = useState<MicState>("idle");
   const [message, setMessage] = useState("Test your microphone before entering the interview room.");
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,7 +55,7 @@ export default function VirtualInterviewLobby({ candidateName, totalQuestions, o
         <div className="relative">
           <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">Virtual Recruiter Interview Room</span>
           <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">Choose the recruiter who will guide your interview.</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">Each recruiter uses the same fair evaluation criteria, with a different communication style and English voice.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">You are interviewing for <strong>{selectedJobRole.title}</strong> at <strong>{selectedCompany.name}</strong>. Choose the recruiter who will conduct the session.</p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {recruiters.map((recruiter) => {
@@ -81,7 +81,7 @@ export default function VirtualInterviewLobby({ candidateName, totalQuestions, o
             <div className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${selectedRecruiter.gradient} text-3xl`}>{selectedRecruiter.emoji}</div>
             <div><h2 className="font-bold text-slate-900">{selectedRecruiter.name}</h2><p className="text-xs text-slate-500">{selectedRecruiter.accent} • {totalQuestions} questions</p></div>
           </div>
-          <div className="mt-4 rounded-xl bg-white p-4 text-sm leading-6 text-slate-600">“Hello {candidateName}. Take a breath, sit comfortably, and answer naturally. I will give you time to think.”</div>
+          <div className="mt-4 rounded-xl border border-blue-100 bg-white p-4 text-sm leading-6 text-slate-600"><p className="font-bold text-slate-900">{selectedJobRole.title}</p><p className="text-xs text-blue-700">{selectedCompany.name} • {selectedJobRole.department}</p><p className="mt-3">“Hello {candidateName}. Thank you for applying to {selectedCompany.name}. I will be interviewing you for the {selectedJobRole.title} position. Take a breath and answer naturally.”</p></div>
           <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600"><li>✓ Use your own experience.</li><li>✓ Pause briefly before speaking.</li><li>✓ Sample answers stay hidden.</li><li>✓ Mock Interview accepts microphone answers only.</li></ul>
         </div>
 

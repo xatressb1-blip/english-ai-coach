@@ -11,6 +11,11 @@ export interface InterviewAttempt {
 
 export interface RecruiterReport {
   candidateName: string;
+  companyName?: string;
+  companyIndustry?: string;
+  jobTitle?: string;
+  jobDepartment?: string;
+  recruiterName?: string;
   overallScore: number;
   readiness: "Developing" | "Nearly Ready" | "Interview Ready" | "Strong Candidate";
   recruiterImpression: string;

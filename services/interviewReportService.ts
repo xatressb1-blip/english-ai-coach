@@ -85,7 +85,8 @@ export function buildRecruiterReport(attempts: InterviewAttempt[], candidateName
 export async function requestIntelligentRecruiterReport(
   attempts: InterviewAttempt[],
   level: TrainingLevel,
-  candidateName: string
+  candidateName: string,
+  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string }
 ): Promise<RecruiterReport> {
   const fallback = buildRecruiterReport(attempts, candidateName);
 
@@ -93,7 +94,7 @@ export async function requestIntelligentRecruiterReport(
     const response = await fetch("/api/interview-report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attempts, level, candidateName, fallback }),
+      body: JSON.stringify({ attempts, level, candidateName, interviewContext, fallback }),
     });
 
     const data = await response.json();
@@ -101,6 +102,7 @@ export async function requestIntelligentRecruiterReport(
 
     return {
       ...fallback,
+      ...interviewContext,
       recruiterImpression: data.report.recruiterImpression ?? fallback.recruiterImpression,
       strengths: Array.isArray(data.report.strengths) ? data.report.strengths.slice(0, 3) : fallback.strengths,
       improvements: Array.isArray(data.report.improvements) ? data.report.improvements.slice(0, 3) : fallback.improvements,
@@ -117,12 +119,14 @@ export function saveRecruiterReport(
   report: RecruiterReport,
   attempts: InterviewAttempt[],
   level: TrainingLevel,
-  candidateName: string
+  candidateName: string,
+  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string }
 ): SavedRecruiterReport | null {
   if (typeof window === "undefined") return null;
 
   const saved: SavedRecruiterReport = {
     ...report,
+    ...interviewContext,
     candidateName,
     id: crypto.randomUUID(),
     level,

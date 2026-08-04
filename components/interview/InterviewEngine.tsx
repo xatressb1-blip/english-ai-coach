@@ -1,106 +1,67 @@
 "use client";
 
 import { useState } from "react";
-
 import { useInterviewContext } from "@/context/InterviewContext";
 import { InterviewState, readyInterview } from "@/services/interviewFlowService";
-import InterviewNavigator from "./InterviewNavigator";
 import InterviewProgress from "./InterviewProgress";
 import InterviewStatusBar from "./InterviewStatusBar";
 import AIInterviewer from "./AIInterviewer";
 import ReadyScreen from "./ReadyScreen";
 import SpeechRecorder from "../SpeechRecorder";
-import AIEvaluation from "../evaluation/AIEvaluation";
-import LiveCoachPanel from "./LiveCoachPanel";
-import VoiceCoach from "./VoiceCoach";
-import VoiceCoachBubble from "./VoiceCoachBubble";
 import FeedbackButton from "../feedback/FeedbackButton";
 import FeedbackDialog from "../feedback/FeedbackDialog";
 import VirtualInterviewLobby from "./VirtualInterviewLobby";
 import RecruiterStage from "./RecruiterStage";
-import InterviewCompletion from "./InterviewCompletion";
 import LevelSelection from "./LevelSelection";
 import FinalRecruiterReport from "./FinalRecruiterReport";
 import CandidateProfile from "./CandidateProfile";
+import InterviewPositionSetup from "./InterviewPositionSetup";
+import InterviewOpening from "./InterviewOpening";
+import InterviewClosing from "./InterviewClosing";
+import MockInterviewEvaluation from "./MockInterviewEvaluation";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [levelChosen, setLevelChosen] = useState(false);
+  const [positionChosen, setPositionChosen] = useState(false);
   const [enteredRoom, setEnteredRoom] = useState(false);
+  const [briefingCompleted, setBriefingCompleted] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
-  const {
-    candidateName,
-    currentQuestion,
-    currentQuestionIndex,
-    totalQuestions,
-    interviewFinished,
-    flow,
-    setFlow,
-    startQuestion,
-  } = useInterviewContext();
+  const { candidateName, currentQuestionIndex, totalQuestions, interviewFinished, flow, setFlow, startQuestion } = useInterviewContext();
 
-  if (!profileCompleted) {
-    return <CandidateProfile onContinue={() => setProfileCompleted(true)} />;
-  }
-
-  if (!levelChosen) {
-    return <LevelSelection onContinue={() => setLevelChosen(true)} />;
-  }
+  if (!profileCompleted) return <CandidateProfile onContinue={() => setProfileCompleted(true)} />;
+  if (!levelChosen) return <LevelSelection onContinue={() => setLevelChosen(true)} />;
+  if (!positionChosen) return <InterviewPositionSetup onContinue={() => setPositionChosen(true)} />;
 
   if (!enteredRoom) {
-    return (
-      <VirtualInterviewLobby
-        candidateName={candidateName}
-        totalQuestions={totalQuestions}
-        onEnter={() => {
-          setEnteredRoom(true);
-          setFlow(readyInterview());
-        }}
-      />
-    );
+    return <VirtualInterviewLobby candidateName={candidateName} totalQuestions={totalQuestions} onEnter={() => setEnteredRoom(true)} />;
   }
 
-  if (interviewFinished) {
-    return <FinalRecruiterReport />;
+  if (!briefingCompleted) {
+    return <InterviewOpening onBegin={() => { setBriefingCompleted(true); setFlow(readyInterview()); }} />;
   }
+
+  if (interviewFinished && !showReport) return <InterviewClosing onViewReport={() => setShowReport(true)} />;
+  if (interviewFinished && showReport) return <FinalRecruiterReport />;
 
   if (flow.state === InterviewState.READY) {
-    return (
-      <div className="mx-auto w-full max-w-5xl">
-        <ReadyScreen
-          current={currentQuestionIndex + 1}
-          total={totalQuestions}
-          onReady={startQuestion}
-        />
-      </div>
-    );
+    return <div className="mx-auto w-full max-w-5xl"><ReadyScreen current={currentQuestionIndex + 1} total={totalQuestions} onReady={startQuestion} /></div>;
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
       <RecruiterStage />
-
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-xl sm:p-6 lg:p-8">
+      <div className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-xl sm:rounded-[28px] sm:p-6 lg:p-8">
         <AIInterviewer />
-        <VoiceCoachBubble />
-
-        <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
-          <InterviewStatusBar />
-          <InterviewProgress />
+        <div className="grid gap-3 lg:grid-cols-[1.15fr_.85fr] lg:gap-5"><InterviewStatusBar /><InterviewProgress /></div>
+        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          <strong>Real interview mode:</strong> answer in your own words. Your transcript and detailed scores remain private until the final recruiter report.
         </div>
-
-        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-          <strong>Interview rule:</strong> answer in your own words. The model answer is intentionally hidden in Mock Interview mode.
-        </div>
-
-        <SpeechRecorder allowManualInput={false} compact title="Your interview answer" />
-        <AIEvaluation question={currentQuestion} />
-        <LiveCoachPanel />
-        <VoiceCoach />
-        <InterviewNavigator />
+        <SpeechRecorder allowManualInput={false} compact hideTranscript title="Your interview response" />
+        <MockInterviewEvaluation />
       </div>
-
       <FeedbackButton onClick={() => setFeedbackOpen(true)} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>

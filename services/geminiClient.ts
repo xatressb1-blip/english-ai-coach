@@ -359,7 +359,8 @@ export async function generateRecruiterReport(
     relevance: number;
     confidence: number;
     suggestions: string[];
-  }>
+  }>,
+  interviewContext?: { companyName: string; companyIndustry: string; jobTitle: string; jobDepartment: string; recruiterName: string }
 ): Promise<GeminiRecruiterReportResult> {
   return generateJson<GeminiRecruiterReportResult>(`
 You are a professional corporate recruiter and supportive interview coach.
@@ -367,6 +368,11 @@ Create one final recruiter report for this completed interview level.
 
 CANDIDATE NAME: ${candidateName}
 LEVEL: ${levelLabel}
+COMPANY: ${interviewContext?.companyName ?? "Simulated Company"}
+INDUSTRY: ${interviewContext?.companyIndustry ?? "General"}
+POSITION: ${interviewContext?.jobTitle ?? "Entry-level position"}
+DEPARTMENT: ${interviewContext?.jobDepartment ?? "General"}
+INTERVIEWER: ${interviewContext?.recruiterName ?? "AI Recruiter"}
 
 INTERVIEW RESULTS:
 ${JSON.stringify(attempts, null, 2)}
@@ -374,6 +380,7 @@ ${JSON.stringify(attempts, null, 2)}
 RULES:
 - Address the candidate naturally by name where appropriate, but do not overuse the name.
 - Base every comment only on the supplied answers and scores.
+- When relevant, connect feedback to the selected position and company context without inventing company facts.
 - Do not claim that the candidate did something that is not shown in the data.
 - Be encouraging but honest and consistent with the scores.
 - If scores are low, do not use words such as excellent or outstanding.

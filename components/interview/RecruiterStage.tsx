@@ -14,7 +14,7 @@ const stateCopy: Record<InterviewState, { label: string; message: string; pulse:
 };
 
 export default function RecruiterStage() {
-  const { currentQuestion, currentQuestionIndex, totalQuestions, flow, selectedRecruiter } = useInterviewContext();
+  const { currentQuestion, currentQuestionIndex, totalQuestions, flow, selectedRecruiter, selectedCompany, selectedJobRole } = useInterviewContext();
   const view = stateCopy[flow.state];
   const recruiterSpeaking = flow.state === InterviewState.ASKING;
 
@@ -23,7 +23,7 @@ export default function RecruiterStage() {
       <div className="relative overflow-hidden px-4 py-5 sm:px-7 sm:py-7 lg:px-9">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,.28),transparent_40%),linear-gradient(135deg,#0f172a,#1e293b_55%,#172554)]" />
         <div className="relative flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200 sm:text-xs">Live mock interview</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Question {currentQuestionIndex + 1} of {totalQuestions}</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200 sm:text-xs">{selectedCompany.name}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">{selectedJobRole.title} • Question {currentQuestionIndex + 1} of {totalQuestions}</p></div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold backdrop-blur sm:px-4 sm:text-xs"><span className={`h-2.5 w-2.5 rounded-full ${view.pulse}`} />{view.label}</div>
         </div>
 

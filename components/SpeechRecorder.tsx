@@ -24,6 +24,7 @@ interface SpeechRecorderProps {
   allowManualInput?: boolean;
   compact?: boolean;
   title?: string;
+  hideTranscript?: boolean;
 }
 
 function isIOSDevice(): boolean {
@@ -69,6 +70,7 @@ export default function SpeechRecorder({
   allowManualInput = true,
   compact = false,
   title = "Speaking Practice",
+  hideTranscript = false,
 }: SpeechRecorderProps) {
   const [mode, setMode] = useState<RecorderMode>("checking");
   const [speechError, setSpeechError] = useState("");
@@ -594,22 +596,23 @@ export default function SpeechRecorder({
       </div>
 
       <div className="mt-6 sm:mt-8">
-        <h3 className="mb-3 text-base font-semibold text-slate-800 sm:text-lg">
-          Your Answer
-        </h3>
-        <div className={`${compact ? "min-h-[120px] sm:min-h-[150px]" : "min-h-[150px] sm:min-h-[200px] lg:min-h-[220px]"} overflow-y-auto break-words rounded-xl border border-slate-200 bg-slate-50 p-4 leading-7 sm:p-5`}>
-          {transcript.trim() ? (
-            <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800 sm:text-base">
-              {transcript}
-            </p>
-          ) : (
-            <p className="text-sm italic text-slate-400 sm:text-base">
-              {status === "processing"
-                ? "Please wait while your audio is converted to text..."
-                : "Your answer will appear here..."}
-            </p>
-          )}
-        </div>
+        {hideTranscript ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            <p className="font-semibold text-slate-800">Private interview transcript</p>
+            <p className="mt-1">{transcript.trim() ? "Your response has been captured and is ready to submit." : status === "processing" ? "Your audio is being converted to text." : "Your transcript stays hidden during Mock Interview so you can focus on speaking naturally."}</p>
+          </div>
+        ) : (
+          <>
+            <h3 className="mb-3 text-base font-semibold text-slate-800 sm:text-lg">Your Answer</h3>
+            <div className={`${compact ? "min-h-[120px] sm:min-h-[150px]" : "min-h-[150px] sm:min-h-[200px] lg:min-h-[220px]"} overflow-y-auto break-words rounded-xl border border-slate-200 bg-slate-50 p-4 leading-7 sm:p-5`}>
+              {transcript.trim() ? (
+                <p className="whitespace-pre-wrap text-[15px] leading-7 text-slate-800 sm:text-base">{transcript}</p>
+              ) : (
+                <p className="text-sm italic text-slate-400 sm:text-base">{status === "processing" ? "Please wait while your audio is converted to text..." : "Your answer will appear here..."}</p>
+              )}
+            </div>
+          </>
+        )}
 
         {showManualInput && (
           <textarea

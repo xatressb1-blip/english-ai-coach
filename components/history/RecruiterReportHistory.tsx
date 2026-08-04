@@ -187,6 +187,9 @@ export default function RecruiterReportHistory() {
                         {report.readiness}
                       </span>
                     </div>
+                    {report.jobTitle && (
+                      <p className="mt-2 text-sm font-semibold text-blue-700">{report.jobTitle}{report.companyName ? ` • ${report.companyName}` : ""}</p>
+                    )}
                     <p className="mt-2 text-sm text-slate-500">{formatDate(report.createdAt)}</p>
                   </div>
 

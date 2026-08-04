@@ -11,7 +11,7 @@ import {
 import { RecruiterReport } from "@/types/interviewReport";
 
 export default function FinalRecruiterReport() {
-  const { attempts, candidateName, selectedLevel, resetInterview } = useInterviewContext();
+  const { attempts, candidateName, selectedLevel, resetInterview, selectedCompany, selectedJobRole, selectedRecruiter } = useInterviewContext();
   const fallback = useMemo(() => buildRecruiterReport(attempts, candidateName), [attempts, candidateName]);
   const [report, setReport] = useState<RecruiterReport>(fallback);
   const [loading, setLoading] = useState(true);
@@ -21,10 +21,18 @@ export default function FinalRecruiterReport() {
   useEffect(() => {
     let active = true;
 
-    requestIntelligentRecruiterReport(attempts, selectedLevel, candidateName).then((result) => {
+    const interviewContext = {
+      companyName: selectedCompany.name,
+      companyIndustry: selectedCompany.industry,
+      jobTitle: selectedJobRole.title,
+      jobDepartment: selectedJobRole.department,
+      recruiterName: selectedRecruiter.name,
+    };
+
+    requestIntelligentRecruiterReport(attempts, selectedLevel, candidateName, interviewContext).then((result) => {
       if (!active) return;
       setReport(result);
-      saveRecruiterReport(result, attempts, selectedLevel, candidateName);
+      saveRecruiterReport(result, attempts, selectedLevel, candidateName, interviewContext);
       setSaved(true);
       setLoading(false);
     });
@@ -32,7 +40,7 @@ export default function FinalRecruiterReport() {
     return () => {
       active = false;
     };
-  }, [attempts, candidateName, selectedLevel]);
+  }, [attempts, candidateName, selectedCompany, selectedJobRole, selectedLevel, selectedRecruiter]);
 
   const breakdown = [
     ["Grammar", report.scoreBreakdown.grammar],
@@ -51,7 +59,10 @@ export default function FinalRecruiterReport() {
           <div>
             <h1 className="text-3xl font-bold sm:text-4xl">{candidateName}, you completed {levelName}</h1>
             <p className="mt-2 text-slate-300">
-              {loading ? "AI recruiter is reviewing the complete interview..." : `Based on ${attempts.length} evaluated answers.`}
+              {selectedJobRole.title} at {selectedCompany.name}
+            </p>
+            <p className="mt-1 text-sm text-slate-400">
+              Interviewed by {selectedRecruiter.name} • {loading ? "Reviewing the complete interview..." : `Based on ${attempts.length} evaluated answers.`}
             </p>
             {saved && <p className="mt-2 text-sm text-emerald-300">Report saved to this device.</p>}
           </div>

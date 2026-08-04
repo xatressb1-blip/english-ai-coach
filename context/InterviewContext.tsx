@@ -6,12 +6,17 @@ import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { InterviewAttempt, TrainingLevel } from "@/types/interviewReport";
 import { InterviewFlow, InterviewState, getInitialFlow, readyInterview, startInterview } from "@/services/interviewFlowService";
 import { defaultRecruiter, getRecruiterById, RecruiterProfile } from "@/data/recruiters";
+import { CompanyProfile, defaultCompany, defaultJobRole, getCompanyById, getJobRoleById, JobRoleProfile } from "@/data/interviewProfiles";
 
 interface InterviewContextType {
   candidateName: string;
   setCandidateName: (name: string) => void;
   selectedRecruiter: RecruiterProfile;
   setSelectedRecruiterId: (id: string) => void;
+  selectedCompany: CompanyProfile;
+  selectedJobRole: JobRoleProfile;
+  setSelectedCompanyId: (id: string) => void;
+  setSelectedJobRoleId: (id: string) => void;
   selectedLevel: TrainingLevel;
   setSelectedLevel: (level: TrainingLevel) => void;
   currentQuestionIndex: number;
@@ -39,6 +44,8 @@ const InterviewContext = createContext<InterviewContextType | null>(null);
 export function InterviewProvider({ children }: { children: ReactNode }) {
   const [candidateName, setCandidateNameState] = useState("");
   const [selectedRecruiterId, setSelectedRecruiterIdState] = useState(defaultRecruiter.id);
+  const [selectedCompanyId, setSelectedCompanyIdState] = useState(defaultCompany.id);
+  const [selectedJobRoleId, setSelectedJobRoleIdState] = useState(defaultJobRole.id);
   const [selectedLevel, setSelectedLevelState] = useState<TrainingLevel>("basic");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [interviewFinished, setInterviewFinished] = useState(false);
@@ -46,11 +53,32 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
   const [attempts, setAttempts] = useState<InterviewAttempt[]>([]);
 
   const selectedRecruiter = useMemo(() => getRecruiterById(selectedRecruiterId), [selectedRecruiterId]);
+  const selectedCompany = useMemo(() => getCompanyById(selectedCompanyId), [selectedCompanyId]);
+  const selectedJobRole = useMemo(() => getJobRoleById(selectedCompany, selectedJobRoleId), [selectedCompany, selectedJobRoleId]);
 
   const setSelectedRecruiterId = (id: string) => {
     setSelectedRecruiterIdState(getRecruiterById(id).id);
     if (typeof window !== "undefined") {
       localStorage.setItem("english-ai-recruiter", getRecruiterById(id).id);
+    }
+  };
+
+
+  const setSelectedCompanyId = (id: string) => {
+    const company = getCompanyById(id);
+    setSelectedCompanyIdState(company.id);
+    setSelectedJobRoleIdState(company.roles[0].id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("english-ai-company", company.id);
+      localStorage.setItem("english-ai-job-role", company.roles[0].id);
+    }
+  };
+
+  const setSelectedJobRoleId = (id: string) => {
+    const role = getJobRoleById(selectedCompany, id);
+    setSelectedJobRoleIdState(role.id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("english-ai-job-role", role.id);
     }
   };
 
@@ -118,7 +146,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterviewContext.Provider value={{
-      candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
+      candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole, setSelectedCompanyId, setSelectedJobRoleId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
       interviewFinished, flow, setFlow, attempts, saveAttempt, startQuestion, nextQuestion,
       previousQuestion, finishInterview, resetInterview,
