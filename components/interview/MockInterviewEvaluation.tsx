@@ -7,6 +7,7 @@ import { useEvaluationContext } from "@/context/EvaluationContext";
 import { useInterviewContext } from "@/context/InterviewContext";
 import { enqueueSpeech } from "@/services/speechQueueService";
 import { requestFollowUp } from "@/services/followUpService";
+import { SpeechMetrics } from "@/types/speechMetrics";
 
 type InterviewStep =
   | "main-answer"
@@ -16,7 +17,7 @@ type InterviewStep =
   | "acknowledging";
 
 export default function MockInterviewEvaluation() {
-  const { transcript, setTranscript, status } = useSpeechContext();
+  const { transcript, setTranscript, status, speechMetrics } = useSpeechContext();
   const { result, loading, error, evaluate } = useEvaluation();
   const { resetEvaluation } = useEvaluationContext();
   const {
@@ -37,6 +38,7 @@ export default function MockInterviewEvaluation() {
   const [mainAnswer, setMainAnswer] = useState("");
   const [acknowledging, setAcknowledging] = useState(false);
   const decisionStartedRef = useRef(false);
+  const mainSpeechMetricsRef = useRef<SpeechMetrics | null>(null);
 
   const hasAnswer = transcript.trim().length > 0;
   const recorderBusy = status === "recording" || status === "processing";
@@ -64,6 +66,7 @@ export default function MockInterviewEvaluation() {
     decisionStartedRef.current = true;
 
     const capturedMainAnswer = transcript.trim();
+    mainSpeechMetricsRef.current = speechMetrics;
     setMainAnswer(capturedMainAnswer);
     setStep("deciding");
 
@@ -80,6 +83,13 @@ export default function MockInterviewEvaluation() {
       partialIdeas: result.focusAnalysis.partialTopics,
     }).then((decision) => {
       if (!decision.shouldAsk || !decision.question) {
+        saveAttempt({
+          questionId: currentQuestion.id,
+          questionTitle: currentQuestion.title,
+          transcript: capturedMainAnswer,
+          evaluation: result,
+          speechMetrics: mainSpeechMetricsRef.current ?? undefined,
+        });
         speakAcknowledgement();
         return;
       }
@@ -99,6 +109,7 @@ export default function MockInterviewEvaluation() {
     setMainAnswer("");
     setAcknowledging(false);
     decisionStartedRef.current = false;
+    mainSpeechMetricsRef.current = null;
   }, [currentQuestionIndex]);
 
   const submitFollowUp = () => {
@@ -111,6 +122,8 @@ export default function MockInterviewEvaluation() {
       questionTitle: currentQuestion.title,
       transcript: combinedTranscript,
       evaluation: result,
+      speechMetrics: mainSpeechMetricsRef.current ?? undefined,
+      followUpSpeechMetrics: speechMetrics ?? undefined,
     });
     speakAcknowledgement();
   };
@@ -123,6 +136,7 @@ export default function MockInterviewEvaluation() {
     setFollowUpQuestion("");
     setMainAnswer("");
     setStep("main-answer");
+    mainSpeechMetricsRef.current = null;
 
     if (isLastQuestion) {
       finishInterview();

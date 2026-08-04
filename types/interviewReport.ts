@@ -1,4 +1,5 @@
 import { EvaluationResult } from "@/types/evaluation";
+import { SpeechMetrics } from "@/types/speechMetrics";
 
 export type TrainingLevel = "basic" | "advanced";
 
@@ -7,6 +8,8 @@ export interface InterviewAttempt {
   questionTitle: string;
   transcript: string;
   evaluation: EvaluationResult;
+  speechMetrics?: SpeechMetrics;
+  followUpSpeechMetrics?: SpeechMetrics;
 }
 
 export interface RecruiterReport {

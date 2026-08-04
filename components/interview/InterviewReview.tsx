@@ -60,6 +60,31 @@ function statusBadge(status: "covered" | "partial" | "missing") {
   return { icon: "+", label: "Add this idea", className: "bg-rose-100 text-rose-800" };
 }
 
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}m ${remaining.toString().padStart(2, "0")}s`;
+}
+
+function speechAdvice(attempt: InterviewAttempt): string {
+  const metrics = attempt.speechMetrics;
+  if (!metrics) return "Speech metrics were not captured for this earlier interview.";
+
+  const advice: string[] = [];
+  if (metrics.responseLengthStatus === "Too short") advice.push("Develop the answer with one supporting example and a clear result.");
+  if (metrics.responseLengthStatus === "Long") advice.push("Make the answer more concise and keep only the most relevant example.");
+  if (metrics.paceStatus === "Slow") advice.push("Practise in short idea groups so the delivery becomes more continuous.");
+  if (metrics.paceStatus === "Fast") advice.push("Slow down slightly and pause between key ideas.");
+  if (metrics.fillerStatus !== "Good") advice.push("Replace filler words with a short silent pause.");
+  if (metrics.repetitionStatus !== "Good") advice.push("Pause before restarting a phrase to reduce repeated words.");
+
+  return advice.length
+    ? advice.join(" ")
+    : "Your answer length, pace, and speaking habits were within a comfortable practice range.";
+}
+
 export default function InterviewReview({
   attempts,
   title = "Interview Review & Retry",
@@ -154,6 +179,38 @@ export default function InterviewReview({
                     )}
                   </div>
                 </div>
+
+                {attempt.speechMetrics && (
+                  <div className="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 sm:p-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Speech performance</p>
+                        <h4 className="mt-1 font-bold text-slate-950">How your answer was delivered</h4>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cyan-800">Estimated from recording time and transcript</span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                      <Metric label="Speaking time" value={formatDuration(attempt.speechMetrics.durationSeconds)} />
+                      <Metric label="Words" value={attempt.speechMetrics.wordCount.toString()} />
+                      <Metric label="Pace" value={attempt.speechMetrics.wordsPerMinute ? `${attempt.speechMetrics.wordsPerMinute} WPM` : "—"} />
+                      <Metric label="Length" value={attempt.speechMetrics.responseLengthStatus} />
+                      <Metric label="Fillers" value={attempt.speechMetrics.fillerWordCount.toString()} />
+                      <Metric label="Repetitions" value={attempt.speechMetrics.repeatedWordCount.toString()} />
+                    </div>
+                    {(attempt.speechMetrics.fillerWords.length > 0 || attempt.speechMetrics.repeatedWords.length > 0) && (
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
+                        {attempt.speechMetrics.fillerWords.slice(0, 3).map((item) => (
+                          <span key={`filler-${item.phrase}`} className="rounded-full bg-white px-3 py-1">{item.phrase}: {item.count}</span>
+                        ))}
+                        {attempt.speechMetrics.repeatedWords.slice(0, 3).map((item) => (
+                          <span key={`repeat-${item.phrase}`} className="rounded-full bg-white px-3 py-1">repeated “{item.phrase}”: {item.count}</span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-3 text-sm leading-6 text-slate-700">{speechAdvice(attempt)}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">These metrics do not assess accent or detailed pronunciation. They are coaching estimates based on transcript and recording duration.</p>
+                  </div>
+                )}
 
                 {answer.followUpQuestion && (
                   <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">

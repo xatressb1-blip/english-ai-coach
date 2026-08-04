@@ -41,6 +41,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { SpeechMetrics } from "@/types/speechMetrics";
 
 /* ============================================================
  * Speech Status
@@ -83,6 +84,16 @@ interface SpeechContextType {
   setStatus: (
     status: SpeechStatus
   ) => void;
+
+  /**
+   * Metrics captured for the latest recording.
+   */
+  speechMetrics: SpeechMetrics | null;
+
+  /**
+   * Update recording metrics.
+   */
+  setSpeechMetrics: (metrics: SpeechMetrics | null) => void;
 
   /**
    * Reset Speech UI
@@ -132,6 +143,8 @@ export function SpeechProvider({
 
   ] = useState<SpeechStatus>("ready");
 
+  const [speechMetrics, setSpeechMetrics] = useState<SpeechMetrics | null>(null);
+
   /**
    * Reset UI
    */
@@ -140,6 +153,8 @@ export function SpeechProvider({
     setTranscript("");
 
     setStatus("ready");
+
+    setSpeechMetrics(null);
 
   };
 
@@ -156,6 +171,10 @@ export function SpeechProvider({
         status,
 
         setStatus,
+
+        speechMetrics,
+
+        setSpeechMetrics,
 
         resetSpeech,
 

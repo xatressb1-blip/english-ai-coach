@@ -17,6 +17,7 @@ import {
   startRecording,
   stopRecording,
 } from "@/services/speechController";
+import { calculateSpeechMetrics } from "@/services/speechMetricsService";
 
 type RecorderMode = "checking" | "web-speech" | "audio-upload" | "manual";
 
@@ -82,6 +83,7 @@ export default function SpeechRecorder({
     status,
     setStatus,
     resetSpeech,
+    setSpeechMetrics,
   } = useSpeechContext();
 
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -93,6 +95,8 @@ export default function SpeechRecorder({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
+  const recordingStoppedAtRef = useRef<number | null>(null);
 
   const stopRecordingTimer = useCallback(() => {
     if (recordingTimerRef.current) {
@@ -182,6 +186,21 @@ export default function SpeechRecorder({
     [setTranscript]
   );
 
+  const captureSpeechMetrics = useCallback(
+    (text: string): void => {
+      const startedAt = recordingStartedAtRef.current;
+      const stoppedAt = recordingStoppedAtRef.current ?? Date.now();
+
+      if (!startedAt || stoppedAt <= startedAt) {
+        setSpeechMetrics(null);
+        return;
+      }
+
+      setSpeechMetrics(calculateSpeechMetrics(text, stoppedAt - startedAt));
+    },
+    [setSpeechMetrics]
+  );
+
   const transcribeAudio = useCallback(
     async (audioBlob: Blob): Promise<void> => {
       if (audioBlob.size < 500) {
@@ -214,9 +233,10 @@ export default function SpeechRecorder({
       const cleanedTranscript = data.transcript.trim();
       transcriptRef.current = cleanedTranscript;
       setTranscript(cleanedTranscript);
+      captureSpeechMetrics(cleanedTranscript);
       setStatus("finished");
     },
-    [setStatus, setTranscript]
+    [captureSpeechMetrics, setStatus, setTranscript]
   );
 
   useEffect(() => {
@@ -348,6 +368,8 @@ export default function SpeechRecorder({
     resetSpeech();
     audioChunksRef.current = [];
     setRecordingSeconds(0);
+    recordingStartedAtRef.current = Date.now();
+    recordingStoppedAtRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -375,11 +397,14 @@ export default function SpeechRecorder({
       recorder.onerror = () => {
         stopRecordingTimer();
         stopMediaStream();
+        recordingStoppedAtRef.current = Date.now();
+        setSpeechMetrics(null);
         setStatus("finished");
         setSpeechError("Safari could not record audio. Please check microphone permission and try again.");
       };
 
       recorder.onstop = async () => {
+        recordingStoppedAtRef.current = recordingStoppedAtRef.current ?? Date.now();
         stopRecordingTimer();
         stopMediaStream();
         const blob = new Blob(audioChunksRef.current, {
@@ -414,6 +439,9 @@ export default function SpeechRecorder({
     } catch (error) {
       console.error("[SpeechRecorder] getUserMedia failed", error);
       stopMediaStream();
+      recordingStartedAtRef.current = null;
+      recordingStoppedAtRef.current = null;
+      setSpeechMetrics(null);
       setStatus("ready");
       setSpeechError(
         "The microphone did not start. In Safari, open Website Settings, set Microphone to Allow, then reload the page."
@@ -438,10 +466,15 @@ export default function SpeechRecorder({
     setSpeechError("");
     transcriptRef.current = "";
     resetSpeech();
+    recordingStartedAtRef.current = Date.now();
+    recordingStoppedAtRef.current = null;
     shouldKeepRecordingRef.current = true;
 
     if (!startRecording()) {
       shouldKeepRecordingRef.current = false;
+      recordingStartedAtRef.current = null;
+      recordingStoppedAtRef.current = null;
+      setSpeechMetrics(null);
       setSpeechError(
         "The microphone could not start. Check microphone permission, then try again."
       );
@@ -461,12 +494,14 @@ export default function SpeechRecorder({
         return;
       }
 
+      recordingStoppedAtRef.current = Date.now();
       setStatus("processing");
       recorder.stop();
       return;
     }
 
     shouldKeepRecordingRef.current = false;
+    recordingStoppedAtRef.current = Date.now();
     const currentText = transcriptRef.current.trim();
 
     if (currentText && !/[.!?]$/.test(currentText)) {
@@ -480,6 +515,8 @@ export default function SpeechRecorder({
       restartTimerRef.current = null;
     }
 
+    captureSpeechMetrics(transcriptRef.current.trim());
+
     if (stopRecording()) {
       setStatus("processing");
     }
@@ -491,6 +528,8 @@ export default function SpeechRecorder({
     }
 
     transcriptRef.current = "";
+    recordingStartedAtRef.current = null;
+    recordingStoppedAtRef.current = null;
     setSpeechError("");
     resetSpeech();
   };
