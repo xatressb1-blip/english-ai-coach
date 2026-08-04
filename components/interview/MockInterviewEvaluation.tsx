@@ -44,6 +44,7 @@ export default function MockInterviewEvaluation() {
   const recorderBusy = status === "recording" || status === "processing";
   const canSubmitMain = step === "main-answer" && hasAnswer && !recorderBusy && !loading;
   const canSubmitFollowUp = step === "follow-up-answer" && hasAnswer && !recorderBusy;
+  const allowFollowUp = currentQuestion.id >= 4;
 
   const acknowledgement = useMemo(() => {
     const regular = [
@@ -68,6 +69,19 @@ export default function MockInterviewEvaluation() {
     const capturedMainAnswer = transcript.trim();
     mainSpeechMetricsRef.current = speechMetrics;
     setMainAnswer(capturedMainAnswer);
+
+    if (!allowFollowUp) {
+      saveAttempt({
+        questionId: currentQuestion.id,
+        questionTitle: currentQuestion.title,
+        transcript: capturedMainAnswer,
+        evaluation: result,
+        speechMetrics: mainSpeechMetricsRef.current ?? undefined,
+      });
+      speakAcknowledgement();
+      return;
+    }
+
     setStep("deciding");
 
     void requestFollowUp({
@@ -171,7 +185,11 @@ export default function MockInterviewEvaluation() {
           <div className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
           <div>
             <p className="font-semibold text-slate-800">Recruiter is reviewing your response</p>
-            <p className="text-sm leading-6 text-slate-500">The recruiter may ask one short follow-up when clarification would be useful.</p>
+            <p className="text-sm leading-6 text-slate-500">
+              {allowFollowUp
+                ? "The recruiter may ask one short follow-up when clarification would be useful."
+                : "The recruiter is recording your answer and will continue to the next question."}
+            </p>
           </div>
         </div>
       )}
