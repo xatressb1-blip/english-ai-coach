@@ -28,6 +28,7 @@ export async function POST(request: Request) {
         : "";
 
     const question = body?.question as EvaluationQuestionPayload | undefined;
+    const fastEvaluation = body?.fastEvaluation === true;
 
     if (!transcript) {
       return Response.json(
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
           ? question.expectedIdeas
           : [],
       },
+      fastEvaluation,
     });
 
     return Response.json({

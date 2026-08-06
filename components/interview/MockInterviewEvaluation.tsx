@@ -38,6 +38,8 @@ export default function MockInterviewEvaluation() {
   const [followUpQuestion, setFollowUpQuestion] = useState("");
   const [mainAnswer, setMainAnswer] = useState("");
   const [acknowledging, setAcknowledging] = useState(false);
+  const [evaluationSeconds, setEvaluationSeconds] = useState(0);
+  const [activeWaitingStarted, setActiveWaitingStarted] = useState(false);
   const decisionStartedRef = useRef(false);
   const mainSpeechMetricsRef = useRef<SpeechMetrics | null>(null);
 
@@ -56,6 +58,19 @@ export default function MockInterviewEvaluation() {
     const ending = `Thank you, ${selectedRecruiter.shortName === "James" ? "that completes" : "that concludes"} the final interview question. I will now prepare your recruiter report.`;
     return isLastQuestion ? ending : regular[currentQuestionIndex % regular.length];
   }, [currentQuestionIndex, isLastQuestion, selectedRecruiter.shortName]);
+
+  useEffect(() => {
+    if (!loading) {
+      setEvaluationSeconds(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setEvaluationSeconds((current) => current + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [loading]);
 
   const speakAcknowledgement = () => {
     setStep("acknowledging");
@@ -123,6 +138,8 @@ export default function MockInterviewEvaluation() {
     setFollowUpQuestion("");
     setMainAnswer("");
     setAcknowledging(false);
+    setActiveWaitingStarted(false);
+    setEvaluationSeconds(0);
     decisionStartedRef.current = false;
     mainSpeechMetricsRef.current = null;
   }, [currentQuestionIndex]);
@@ -160,6 +177,16 @@ export default function MockInterviewEvaluation() {
     nextQuestion();
   };
 
+  const submitMainAnswer = () => {
+    if (!canSubmitMain) return;
+
+    setActiveWaitingStarted(true);
+    enqueueSpeech(
+      "Thank you. Your answer has been recorded. While I review it, the observers can complete their notes."
+    );
+    void evaluate();
+  };
+
   const continueWithTeacherReview = () => {
     if (!hasAnswer || loading || recorderBusy) return;
     const safeTranscript = transcript.trim();
@@ -184,7 +211,7 @@ export default function MockInterviewEvaluation() {
           </div>
           <button
             type="button"
-            onClick={evaluate}
+            onClick={submitMainAnswer}
             disabled={!canSubmitMain}
             className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
@@ -194,16 +221,57 @@ export default function MockInterviewEvaluation() {
       )}
 
       {(loading || step === "deciding") && (
-        <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-4">
-          <div className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-          <div>
-            <p className="font-semibold text-slate-800">Recruiter is reviewing your response</p>
-            <p className="text-sm leading-6 text-slate-500">
-              {allowFollowUp
-                ? "The recruiter may ask one short follow-up when clarification would be useful."
-                : "The recruiter is recording your answer and will continue to the next question."}
-            </p>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <div className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-slate-800">Recruiter is reviewing your response</p>
+                {loading && (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-700 shadow-sm">
+                    {evaluationSeconds}s
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Your answer is saved. The classroom activity continues while AI prepares concise evidence for the final comparison.
+              </p>
+            </div>
           </div>
+
+          {activeWaitingStarted && loading && (
+            <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4 sm:p-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-700">Active observer time</p>
+                  <h3 className="mt-1 text-lg font-black text-slate-950">Observers, record one clear piece of evidence now.</h3>
+                </div>
+                <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">No silent waiting</span>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-emerald-200 bg-white p-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Observer 1</p>
+                  <p className="mt-1 font-bold text-slate-900">Content & structure</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-600">Check required ideas, logical order, examples, results and job connection.</p>
+                </div>
+                <div className="rounded-xl border border-blue-200 bg-white p-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-700">Observer 2</p>
+                  <p className="mt-1 font-bold text-slate-900">English performance</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-600">Check grammar, vocabulary, linking, clarity, fluency and repetition.</p>
+                </div>
+                <div className="rounded-xl border border-violet-200 bg-white p-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-violet-700">Observer 3</p>
+                  <p className="mt-1 font-bold text-slate-900">Professional performance</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-600">Check eye contact, posture, voice, pace, confidence and professional attitude.</p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm font-semibold text-indigo-900">
+                Teacher prompt: “Identify one strength and one priority improvement before the AI result appears.”
+              </p>
+            </div>
+          )}
         </div>
       )}
 

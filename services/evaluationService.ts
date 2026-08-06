@@ -30,6 +30,7 @@ async function requestEvaluationOnce(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         transcript,
+        fastEvaluation: question.id >= 1 && question.id <= 3,
         question: {
           id: question.id, title: question.title, description: question.description,
           level: question.level, keywords: question.keywords, grammarFocus: question.grammarFocus,

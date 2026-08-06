@@ -229,6 +229,7 @@ export interface EvaluationQuestionContext {
 interface GenerateEvaluationInput {
   transcript: string;
   question: EvaluationQuestionContext;
+  fastEvaluation?: boolean;
 }
 
 /* ============================================================
@@ -239,8 +240,48 @@ interface GenerateEvaluationInput {
 export async function generateEvaluation({
   transcript,
   question,
+  fastEvaluation = false,
 }: GenerateEvaluationInput): Promise<GeminiEvaluationResult> {
-  const prompt = `
+  const fastPrompt = `
+You are evaluating one entry-level English job-interview answer during a live classroom demonstration.
+Return a fast, consistent and encouraging assessment. Be concise.
+
+QUESTION: ${question.title}
+CONTENT CRITERIA: ${JSON.stringify(question.expectedIdeas)}
+ANSWER: ${transcript}
+
+RULES:
+- Score grammar, vocabulary, pronunciation estimate, fluency, relevance and confidence from 0 to 10.
+- Pronunciation is only an estimate from the transcript; keep its comment brief.
+- Assess each supplied content criterion semantically. Preserve every criterion id and label.
+- Status must be covered, partial or missing. A keyword alone is not enough.
+- Evidence must be a very short quote or paraphrase; use an empty string when missing.
+- evidenceQualityScore is 0-100.
+- Keep every comment to one short sentence.
+- Return at most one grammar mistake and exactly one priority suggestion.
+- Do not generate an improved answer in fast mode; return an empty string.
+- Return valid JSON only, with no markdown.
+
+JSON:
+{
+  "grammar": 0, "grammarComment": "",
+  "vocabulary": 0, "vocabularyComment": "",
+  "pronunciation": 0, "pronunciationComment": "",
+  "fluency": 0, "fluencyComment": "",
+  "relevance": 0, "relevanceComment": "",
+  "confidence": 0, "confidenceComment": "",
+  "overallFeedback": "",
+  "mistakes": [],
+  "suggestions": [""],
+  "improvedAnswer": "",
+  "contentAssessment": {
+    "criteria": [{"id":"", "label":"", "status":"covered", "evidence":"", "coachingTip":""}],
+    "evidenceQualityScore": 0,
+    "summary": ""
+  }
+}`;
+
+  const fullPrompt = `
 You are a professional English job-interview examiner and supportive speaking coach.
 
 Evaluate the candidate's answer for THIS specific interview question.
@@ -331,7 +372,9 @@ Return ONLY valid JSON with exactly this structure:
 }
 `;
 
-  console.log("[Gemini] Evaluating answer against question context...");
+  const prompt = fastEvaluation ? fastPrompt : fullPrompt;
+
+  console.log(`[Gemini] Evaluating answer (${fastEvaluation ? "fast" : "full"} mode)...`);
 
   const result = await generateJson<GeminiEvaluationResult>(prompt);
 
