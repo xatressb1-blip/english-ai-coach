@@ -8,6 +8,7 @@ import { useInterviewContext } from "@/context/InterviewContext";
 import { enqueueSpeech } from "@/services/speechQueueService";
 import { requestFollowUp } from "@/services/followUpService";
 import { SpeechMetrics } from "@/types/speechMetrics";
+import { buildUnavailableEvaluation } from "@/services/evaluationService";
 
 type InterviewStep =
   | "main-answer"
@@ -19,7 +20,7 @@ type InterviewStep =
 export default function MockInterviewEvaluation() {
   const { transcript, setTranscript, status, speechMetrics } = useSpeechContext();
   const { result, loading, error, evaluate } = useEvaluation();
-  const { resetEvaluation } = useEvaluationContext();
+  const { resetEvaluation, setResult, setError } = useEvaluationContext();
   const {
     candidateName,
     selectedRecruiter,
@@ -70,7 +71,7 @@ export default function MockInterviewEvaluation() {
     mainSpeechMetricsRef.current = speechMetrics;
     setMainAnswer(capturedMainAnswer);
 
-    if (!allowFollowUp) {
+    if (!allowFollowUp || result.evaluationStatus === "unavailable") {
       saveAttempt({
         questionId: currentQuestion.id,
         questionTitle: currentQuestion.title,
@@ -159,6 +160,18 @@ export default function MockInterviewEvaluation() {
     nextQuestion();
   };
 
+  const continueWithTeacherReview = () => {
+    if (!hasAnswer || loading || recorderBusy) return;
+    const safeTranscript = transcript.trim();
+    const unavailable = buildUnavailableEvaluation(
+      currentQuestion,
+      safeTranscript,
+      error ?? "AI evaluation unavailable"
+    );
+    setError(null);
+    setResult(unavailable);
+  };
+
   return (
     <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       {!result && (
@@ -175,7 +188,7 @@ export default function MockInterviewEvaluation() {
             disabled={!canSubmitMain}
             className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
-            {loading ? "Recruiter is reviewing..." : "Submit Answer"}
+            {loading ? "AI is evaluating..." : "Submit Answer"}
           </button>
         </div>
       )}
@@ -194,8 +207,15 @@ export default function MockInterviewEvaluation() {
         </div>
       )}
 
-      {error && (
-        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">{error}</div>
+      {error && !result && (
+        <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          <p className="font-bold">Your answer is safe.</p>
+          <p className="mt-1">{error}</p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={evaluate} disabled={!canSubmitMain} className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 font-bold text-white disabled:bg-slate-300">Try AI Evaluation Again</button>
+            <button type="button" onClick={continueWithTeacherReview} disabled={!hasAnswer || recorderBusy || loading} className="min-h-11 rounded-xl border border-amber-600 bg-white px-4 py-2 font-bold text-amber-800 disabled:opacity-50">Continue with Teacher Review</button>
+          </div>
+        </div>
       )}
 
       {result && (step === "follow-up-speaking" || step === "follow-up-answer") && (

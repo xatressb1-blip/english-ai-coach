@@ -109,7 +109,8 @@ export default function TeacherProjectionSummary({
   const [notes, setNotes] = useState<NoteMap>({ content: "", language: "", professional: "" });
 
   const aiSummary = useMemo(() => {
-    const focusAttempts = attempts.filter((attempt) => attempt.evaluation.focusAnalysis);
+    const evaluatedAttempts = attempts.filter((attempt) => attempt.evaluation.evaluationStatus !== "unavailable");
+    const focusAttempts = evaluatedAttempts.filter((attempt) => attempt.evaluation.focusAnalysis);
     const speechAttempts = attempts.filter((attempt) => attempt.speechMetrics);
 
     return {
@@ -122,14 +123,15 @@ export default function TeacherProjectionSummary({
       structure: focusAttempts.length
         ? metricAverage(focusAttempts, (attempt) => attempt.evaluation.focusAnalysis.structureScore)
         : 0,
-      grammar: metricAverage(attempts, (attempt) => attempt.evaluation.grammar.score),
-      vocabulary: metricAverage(attempts, (attempt) => attempt.evaluation.vocabulary.score),
-      fluency: metricAverage(attempts, (attempt) => attempt.evaluation.fluency.score),
-      relevance: metricAverage(attempts, (attempt) => attempt.evaluation.relevance.score),
-      confidence: metricAverage(attempts, (attempt) => attempt.evaluation.confidence.score),
+      grammar: metricAverage(evaluatedAttempts, (attempt) => attempt.evaluation.grammar.score),
+      vocabulary: metricAverage(evaluatedAttempts, (attempt) => attempt.evaluation.vocabulary.score),
+      fluency: metricAverage(evaluatedAttempts, (attempt) => attempt.evaluation.fluency.score),
+      relevance: metricAverage(evaluatedAttempts, (attempt) => attempt.evaluation.relevance.score),
+      confidence: metricAverage(evaluatedAttempts, (attempt) => attempt.evaluation.confidence.score),
       pace: speechAttempts.length
         ? average(speechAttempts.map((attempt) => attempt.speechMetrics?.wordsPerMinute ?? 0).filter(Boolean))
         : 0,
+      evaluatedCount: evaluatedAttempts.length,
       fillers: speechAttempts.length
         ? speechAttempts.reduce((sum, attempt) => sum + (attempt.speechMetrics?.fillerWordCount ?? 0), 0)
         : 0,
@@ -178,7 +180,7 @@ export default function TeacherProjectionSummary({
 
             <div className="space-y-6 p-4 sm:p-8">
               <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <SummaryMetric label="Overall" value={`${report.overallScore}/10`} />
+                <SummaryMetric label="Overall" value={aiSummary.evaluatedCount ? `${report.overallScore}/10` : "Unavailable"} />
                 <SummaryMetric label="Coverage" value={`${aiSummary.coverage}%`} />
                 <SummaryMetric label="Evidence" value={`${aiSummary.evidence}%`} />
                 <SummaryMetric label="Relevance" value={`${aiSummary.relevance}/10`} />
@@ -206,10 +208,10 @@ export default function TeacherProjectionSummary({
                       {attempts.slice(0, 3).map((attempt, index) => (
                         <tr key={`${attempt.questionId}-${index}`}>
                           <td className="px-4 py-3 font-semibold text-slate-900">Q{index + 1}. {attempt.questionTitle}</td>
-                          <td className="px-4 py-3 font-black">{attempt.evaluation.overall}/10</td>
-                          <td className="px-4 py-3">{attempt.evaluation.focusAnalysis.coverageScore}%</td>
-                          <td className="px-4 py-3">{attempt.evaluation.focusAnalysis.evidenceQualityScore}%</td>
-                          <td className="px-4 py-3">{attempt.evaluation.focusAnalysis.structureScore}%</td>
+                          <td className="px-4 py-3 font-black">{attempt.evaluation.evaluationStatus === "unavailable" ? "Unavailable" : `${attempt.evaluation.overall}/10`}</td>
+                          <td className="px-4 py-3">{attempt.evaluation.evaluationStatus === "unavailable" ? "Teacher review" : `${attempt.evaluation.focusAnalysis.coverageScore}%`}</td>
+                          <td className="px-4 py-3">{attempt.evaluation.evaluationStatus === "unavailable" ? "Teacher review" : `${attempt.evaluation.focusAnalysis.evidenceQualityScore}%`}</td>
+                          <td className="px-4 py-3">{attempt.evaluation.evaluationStatus === "unavailable" ? "Teacher review" : `${attempt.evaluation.focusAnalysis.structureScore}%`}</td>
                           <td className="px-4 py-3">
                             {attempt.speechMetrics
                               ? `${attempt.speechMetrics.wordsPerMinute ?? "—"} WPM · ${attempt.speechMetrics.fillerWordCount} fillers`

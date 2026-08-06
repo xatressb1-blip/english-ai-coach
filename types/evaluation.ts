@@ -47,6 +47,8 @@ export interface CoachResult {
 
 export interface EvaluationResult {
   evaluationVersion: string;
+  evaluationStatus?: "available" | "unavailable";
+  evaluationError?: string;
   overall: number;
   overallFeedback: string;
   grammar: GrammarResult;

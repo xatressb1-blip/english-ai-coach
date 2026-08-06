@@ -91,12 +91,13 @@ export default function InterviewReview({
   description = "Review what you said, identify missing ideas, and practise the answers that will improve your next interview most.",
   compact = false,
 }: InterviewReviewProps) {
-  if (!attempts.length) return null;
+  const evaluatedAttempts = attempts.filter((attempt) => attempt.evaluation.evaluationStatus !== "unavailable");
+  if (!evaluatedAttempts.length) return null;
 
-  const sortedByScore = [...attempts].sort(
+  const sortedByScore = [...evaluatedAttempts].sort(
     (a, b) => a.evaluation.overall - b.evaluation.overall
   );
-  const retryIds = new Set(sortedByScore.slice(0, Math.min(3, attempts.length)).map((item) => item.questionId));
+  const retryIds = new Set(sortedByScore.slice(0, Math.min(3, evaluatedAttempts.length)).map((item) => item.questionId));
 
   return (
     <section className={compact ? "mt-5" : "border-t border-slate-200 px-4 py-7 sm:px-8 sm:py-9"}>
@@ -112,7 +113,7 @@ export default function InterviewReview({
       </div>
 
       <div className="mt-5 space-y-4">
-        {attempts.map((attempt, index) => {
+        {evaluatedAttempts.map((attempt, index) => {
           const answer = splitAnswer(attempt.transcript);
           const focus = attempt.evaluation.focusAnalysis;
           const ideas = focus?.ideaAssessments ?? [];

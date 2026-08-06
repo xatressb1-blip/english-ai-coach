@@ -14,7 +14,7 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
 
   const { transcript } = useSpeechContext();
 
-  const { currentQuestion, saveAttempt } = useInterviewContext();
+  const { currentQuestion } = useInterviewContext();
 
   const {
 
@@ -72,13 +72,6 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
 
       setResult(evaluation);
 
-      saveAttempt({
-        questionId: evaluationQuestion.id,
-        questionTitle: evaluationQuestion.title,
-        transcript,
-        evaluation,
-      });
-
       addHistory({
 
         id: crypto.randomUUID(),
@@ -130,8 +123,6 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
     evaluationQuestion,
 
     addHistory,
-    saveAttempt,
-
     setError,
 
     setLoading,

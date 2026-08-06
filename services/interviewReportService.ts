@@ -15,74 +15,23 @@ const average = (values: number[]) =>
     : 0;
 
 export function buildRecruiterReport(attempts: InterviewAttempt[], candidateName = "Candidate"): RecruiterReport {
-  const sorted = [...attempts].sort((a, b) => a.evaluation.overall - b.evaluation.overall);
+  const evaluatedAttempts = attempts.filter((item) => item.evaluation.evaluationStatus !== "unavailable");
+  const sorted = [...evaluatedAttempts].sort((a, b) => a.evaluation.overall - b.evaluation.overall);
   const weakestAttempt = sorted[0] ?? null;
   const bestAttempt = sorted.at(-1) ?? null;
-
-  const overallScore = average(attempts.map((item) => item.evaluation.overall));
-  const readiness = overallScore < 5
-    ? "Developing"
-    : overallScore < 7
-      ? "Nearly Ready"
-      : overallScore < 8.5
-        ? "Interview Ready"
-        : "Strong Candidate";
-
+  const overallScore = average(evaluatedAttempts.map((item) => item.evaluation.overall));
+  const readiness = evaluatedAttempts.length === 0 ? "Developing" : overallScore < 5 ? "Developing" : overallScore < 7 ? "Nearly Ready" : overallScore < 8.5 ? "Interview Ready" : "Strong Candidate";
+  const metric = (selector: (item: InterviewAttempt) => number) => average(evaluatedAttempts.map(selector));
   const scoreBreakdown = {
-    grammar: average(attempts.map((item) => item.evaluation.grammar.score)),
-    vocabulary: average(attempts.map((item) => item.evaluation.vocabulary.score)),
-    pronunciation: average(attempts.map((item) => item.evaluation.pronunciation.score)),
-    fluency: average(attempts.map((item) => item.evaluation.fluency.score)),
-    relevance: average(attempts.map((item) => item.evaluation.relevance.score)),
-    confidence: average(attempts.map((item) => item.evaluation.confidence.score)),
+    grammar: metric((item) => item.evaluation.grammar.score), vocabulary: metric((item) => item.evaluation.vocabulary.score),
+    pronunciation: metric((item) => item.evaluation.pronunciation.score), fluency: metric((item) => item.evaluation.fluency.score),
+    relevance: metric((item) => item.evaluation.relevance.score), confidence: metric((item) => item.evaluation.confidence.score),
   };
-
-  const metrics = [
-    ["Grammar accuracy", scoreBreakdown.grammar],
-    ["Vocabulary", scoreBreakdown.vocabulary],
-    ["Pronunciation", scoreBreakdown.pronunciation],
-    ["Fluency", scoreBreakdown.fluency],
-    ["Answer relevance", scoreBreakdown.relevance],
-    ["Confidence", scoreBreakdown.confidence],
-  ] as const;
-
-  const strengths = [...metrics]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, score]) => `${name}: ${score}/10`);
-
-  const improvements = [...metrics]
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 3)
-    .map(([name, score]) => `${name}: ${score}/10 — practise this area in your next attempt.`);
-
-  const recruiterImpression = overallScore >= 8.5
-    ? "You presented yourself as a confident, relevant, and professional candidate. Your answers would create a strong first impression in a real interview."
-    : overallScore >= 7
-      ? "You appear prepared and professional. Your answers are generally relevant, but stronger examples and smoother delivery would make you more convincing."
-      : overallScore >= 5
-        ? "You show potential and a positive attitude, but several answers need clearer structure, stronger examples, and more confident delivery."
-        : "You are still developing interview readiness. Focus first on answering the question directly, using complete sentences, and giving one clear example.";
-
-  return {
-    evaluationVersion: attempts[0]?.evaluation.evaluationVersion ?? EVALUATION_VERSION,
-    candidateName,
-    overallScore,
-    readiness,
-    recruiterImpression,
-    strengths,
-    improvements,
-    recommendedNextPractice: [
-      weakestAttempt
-        ? `Practise “${weakestAttempt.questionTitle}” again and add one specific example.`
-        : "Complete all questions in this level.",
-      "Keep each answer focused and structured with a clear beginning, supporting point, and conclusion.",
-      "Repeat your answers aloud until you can speak for 60–90 seconds with fewer pauses.",
-    ],
-    bestAttempt,
-    weakestAttempt,
-    scoreBreakdown,
-  };
+  const metrics = [["Grammar accuracy", scoreBreakdown.grammar],["Vocabulary", scoreBreakdown.vocabulary],["Pronunciation", scoreBreakdown.pronunciation],["Fluency", scoreBreakdown.fluency],["Answer relevance", scoreBreakdown.relevance],["Confidence", scoreBreakdown.confidence]] as const;
+  const strengths = evaluatedAttempts.length ? [...metrics].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name,score])=>`${name}: ${score}/10`) : ["Observer assessment and teacher judgement are available."];
+  const improvements = evaluatedAttempts.length ? [...metrics].sort((a,b)=>a[1]-b[1]).slice(0,3).map(([name,score])=>`${name}: ${score}/10 — practise this area in your next attempt.`) : ["AI evaluation was unavailable. Review the transcript with the observer rubrics."];
+  const recruiterImpression = evaluatedAttempts.length === 0 ? "AI evaluation was unavailable. The interview remains valid for observer and teacher assessment." : overallScore >= 8.5 ? "You presented yourself as a confident, relevant, and professional candidate." : overallScore >= 7 ? "You appear prepared and professional. Stronger examples would make you more convincing." : overallScore >= 5 ? "You show potential, but several answers need clearer structure and stronger examples." : "Focus on answering directly, using complete sentences, and giving one clear example.";
+  return { evaluationVersion: evaluatedAttempts[0]?.evaluation.evaluationVersion ?? EVALUATION_VERSION, candidateName, overallScore, readiness, recruiterImpression, strengths, improvements, recommendedNextPractice: [weakestAttempt ? `Practise “${weakestAttempt.questionTitle}” again and add one specific example.` : "Review any answer without AI feedback using the observer rubrics.", "Keep each answer focused and structured.", "Repeat your answers aloud with fewer pauses."], bestAttempt, weakestAttempt, scoreBreakdown };
 }
 
 export async function requestIntelligentRecruiterReport(

@@ -8,7 +8,8 @@ import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { analyzeFocus } from "./focusAnalyzer";
 import { EVALUATION_VERSION } from "./evaluationReliability";
 
-const REQUEST_TIMEOUT = 30000;
+const REQUEST_TIMEOUT = 25000;
+const MAX_ATTEMPTS = 2;
 
 function validateTranscript(transcript: string) {
   if (!transcript.trim()) {
@@ -16,7 +17,7 @@ function validateTranscript(transcript: string) {
   }
 }
 
-async function requestEvaluation(
+async function requestEvaluationOnce(
   question: InterviewQuestion,
   transcript: string
 ) {
@@ -26,53 +27,50 @@ async function requestEvaluation(
   try {
     const response = await fetch("/api/evaluate", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         transcript,
         question: {
-          id: question.id,
-          title: question.title,
-          description: question.description,
-          level: question.level,
-          keywords: question.keywords,
-          grammarFocus: question.grammarFocus,
-          vocabularyLevel: question.vocabularyLevel,
-          sampleAnswer: question.sampleAnswer,
-          commonMistakes: question.commonMistakes,
-          expectedIdeas: question.expectedIdeas ?? [],
+          id: question.id, title: question.title, description: question.description,
+          level: question.level, keywords: question.keywords, grammarFocus: question.grammarFocus,
+          vocabularyLevel: question.vocabularyLevel, sampleAnswer: question.sampleAnswer,
+          commonMistakes: question.commonMistakes, expectedIdeas: question.expectedIdeas ?? [],
         },
       }),
       signal: controller.signal,
     });
 
     let data: any = {};
-
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error("Invalid server response.");
-    }
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.message ?? "Failed to evaluate interview.");
-    }
-
-    if (!data.result) {
-      throw new Error("No evaluation result received.");
-    }
-
+    try { data = await response.json(); } catch { throw new Error("Invalid server response."); }
+    if (!response.ok || !data.success) throw new Error(data.message ?? "Failed to evaluate interview.");
+    if (!data.result) throw new Error("No evaluation result received.");
     return data.result;
   } catch (error: any) {
     if (error?.name === "AbortError") {
-      throw new Error("Gemini request timeout. Please try again.");
+      const timeoutError = new Error("AI_TIMEOUT");
+      timeoutError.name = "AI_TIMEOUT";
+      throw timeoutError;
     }
-
     throw error;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function requestEvaluation(question: InterviewQuestion, transcript: string) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await requestEvaluationOnce(question, transcript);
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+  }
+  if (lastError instanceof Error && lastError.name === "AI_TIMEOUT") {
+    throw new Error("Your answer is safe, but the AI evaluation is taking longer than expected. Try again or continue with teacher review.");
+  }
+  throw lastError;
 }
 
 function clampScore(value: unknown): number {
@@ -110,6 +108,7 @@ function buildEvaluation(
 ): EvaluationResult {
   return {
     evaluationVersion: EVALUATION_VERSION,
+    evaluationStatus: "available",
     overall: 0,
     overallFeedback: result.overallFeedback ?? "",
     grammar: buildGrammar(result),
@@ -198,4 +197,26 @@ export async function evaluateInterview(
   }
 
   return evaluation;
+}
+
+
+export function buildUnavailableEvaluation(
+  question: InterviewQuestion,
+  transcript: string,
+  reason = "AI evaluation unavailable"
+): EvaluationResult {
+  const focusAnalysis = analyzeFocus(question, transcript, undefined);
+  const unavailable = { score: 0, comment: "Not evaluated by AI." };
+  return {
+    evaluationVersion: EVALUATION_VERSION,
+    evaluationStatus: "unavailable",
+    evaluationError: reason,
+    overall: 0,
+    overallFeedback: "AI evaluation was unavailable. Use observer evidence and teacher judgement.",
+    grammar: { ...unavailable, mistakes: [] },
+    vocabulary: unavailable, pronunciation: unavailable, fluency: unavailable,
+    relevance: unavailable, confidence: unavailable, suggestions: [],
+    focusAnalysis, coach: { good: false, feedback: ["Teacher review required."] },
+    improvedAnswer: "",
+  };
 }
