@@ -9,6 +9,7 @@ import { useHistoryContext } from "@/context/HistoryContext";
 
 import { evaluateInterview } from "@/services/evaluationService";
 import { InterviewQuestion } from "@/types/InterviewQuestion";
+import { AiEvaluationError } from "@/services/aiError";
 
 export function useEvaluation(questionOverride?: InterviewQuestion) {
 
@@ -28,7 +29,15 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
 
     error,
 
+    errorCode,
+
+    errorRetryable,
+
     setError,
+
+    setErrorCode,
+
+    setErrorRetryable,
 
   } = useEvaluationContext();
 
@@ -43,6 +52,8 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
   const evaluate = useCallback(async () => {
 
     setError(null);
+    setErrorCode(null);
+    setErrorRetryable(false);
 
     setResult(null);
 
@@ -91,23 +102,19 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
     }
 
     catch (err) {
-
-      if (err instanceof Error) {
-
+      if (err instanceof AiEvaluationError) {
         setError(err.message);
-
+        setErrorCode(err.code);
+        setErrorRetryable(err.retryable);
+      } else if (err instanceof Error) {
+        setError(err.message);
+        setErrorCode("AI_UNKNOWN");
+        setErrorRetryable(false);
+      } else {
+        setError("AI evaluation is temporarily unavailable. Your answer has been saved.");
+        setErrorCode("AI_UNKNOWN");
+        setErrorRetryable(false);
       }
-
-      else {
-
-        setError(
-
-          "Unexpected error occurred."
-
-        );
-
-      }
-
     }
 
     finally {
@@ -125,6 +132,10 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
     addHistory,
     setError,
 
+    setErrorCode,
+
+    setErrorRetryable,
+
     setLoading,
 
     setResult,
@@ -138,6 +149,10 @@ export function useEvaluation(questionOverride?: InterviewQuestion) {
     loading,
 
     error,
+
+    errorCode,
+
+    errorRetryable,
 
     evaluate,
 

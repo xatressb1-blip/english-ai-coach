@@ -10,6 +10,7 @@ import {
 import {
   EvaluationResult,
 } from "@/types/evaluation";
+import type { AiErrorCode } from "@/services/aiError";
 
 interface EvaluationContextType {
   result: EvaluationResult | null;
@@ -17,6 +18,10 @@ interface EvaluationContextType {
   loading: boolean;
 
   error: string | null;
+
+  errorCode: AiErrorCode | null;
+
+  errorRetryable: boolean;
 
   setResult: (
     result: EvaluationResult | null
@@ -28,6 +33,14 @@ interface EvaluationContextType {
 
   setError: (
     error: string | null
+  ) => void;
+
+  setErrorCode: (
+    code: AiErrorCode | null
+  ) => void;
+
+  setErrorRetryable: (
+    retryable: boolean
   ) => void;
 
   resetEvaluation: () => void;
@@ -54,10 +67,18 @@ export function EvaluationProvider({
   const [error, setError] =
     useState<string | null>(null);
 
+  const [errorCode, setErrorCode] =
+    useState<AiErrorCode | null>(null);
+
+  const [errorRetryable, setErrorRetryable] =
+    useState(false);
+
   const resetEvaluation = () => {
     setResult(null);
     setLoading(false);
     setError(null);
+    setErrorCode(null);
+    setErrorRetryable(false);
   };
 
   return (
@@ -69,11 +90,19 @@ export function EvaluationProvider({
 
         error,
 
+        errorCode,
+
+        errorRetryable,
+
         setResult,
 
         setLoading,
 
         setError,
+
+        setErrorCode,
+
+        setErrorRetryable,
 
         resetEvaluation,
       }}

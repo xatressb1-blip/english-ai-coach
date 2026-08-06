@@ -93,44 +93,59 @@ const DEFAULT_MODEL =
   process.env.GEMINI_MODEL ??
   "models/gemini-3-flash-preview";
 
+const FALLBACK_MODEL =
+  process.env.GEMINI_FALLBACK_MODEL?.trim() || "";
+
 /* ============================================================
  * Generate Content
  * ============================================================
  */
 
 export async function generateContent(
-
-  prompt: string
-
+  prompt: string,
+  options?: { allowFallback?: boolean }
 ): Promise<string> {
+  const ai = getGeminiClient();
+  const models = [DEFAULT_MODEL];
 
-  const ai =
-    getGeminiClient();
-
-  const response =
-    await ai.models.generateContent({
-
-      model: DEFAULT_MODEL,
-
-      contents: prompt,
-
-    });
-
-  const text =
-    response.text;
-
-  if (!text?.trim()) {
-
-    throw new Error(
-
-      "Gemini returned empty response."
-
-    );
-
+  if (
+    options?.allowFallback &&
+    FALLBACK_MODEL &&
+    FALLBACK_MODEL !== DEFAULT_MODEL
+  ) {
+    models.push(FALLBACK_MODEL);
   }
 
-  return text.trim();
+  let lastError: unknown;
 
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+      });
+
+      const text = response.text;
+
+      if (!text?.trim()) {
+        throw new Error("Gemini returned empty response.");
+      }
+
+      return text.trim();
+    } catch (error: any) {
+      lastError = error;
+      const status = Number(error?.status ?? error?.error?.code ?? 0);
+
+      // A fallback model is useful only for temporary model overload.
+      // Daily/project quota failures normally affect the whole project,
+      // so switching models automatically would create more failed calls.
+      if (status !== 503) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 /* ============================================================
@@ -145,7 +160,7 @@ export async function generateJson<T>(
 ): Promise<T> {
 
   const text =
-    await generateContent(prompt);
+    await generateContent(prompt, { allowFallback: true });
 
   const cleaned =
 

@@ -7,6 +7,7 @@ import {
 import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { analyzeFocus } from "./focusAnalyzer";
 import { EVALUATION_VERSION } from "./evaluationReliability";
+import { AiEvaluationError, type AiErrorCode } from "./aiError";
 
 const REQUEST_TIMEOUT = 25000;
 const MAX_ATTEMPTS = 2;
@@ -32,27 +33,71 @@ async function requestEvaluationOnce(
         transcript,
         fastEvaluation: question.id >= 1 && question.id <= 3,
         question: {
-          id: question.id, title: question.title, description: question.description,
-          level: question.level, keywords: question.keywords, grammarFocus: question.grammarFocus,
-          vocabularyLevel: question.vocabularyLevel, sampleAnswer: question.sampleAnswer,
-          commonMistakes: question.commonMistakes, expectedIdeas: question.expectedIdeas ?? [],
+          id: question.id,
+          title: question.title,
+          description: question.description,
+          level: question.level,
+          keywords: question.keywords,
+          grammarFocus: question.grammarFocus,
+          vocabularyLevel: question.vocabularyLevel,
+          sampleAnswer: question.sampleAnswer,
+          commonMistakes: question.commonMistakes,
+          expectedIdeas: question.expectedIdeas ?? [],
         },
       }),
       signal: controller.signal,
     });
 
     let data: any = {};
-    try { data = await response.json(); } catch { throw new Error("Invalid server response."); }
-    if (!response.ok || !data.success) throw new Error(data.message ?? "Failed to evaluate interview.");
-    if (!data.result) throw new Error("No evaluation result received.");
+    try {
+      data = await response.json();
+    } catch {
+      throw new AiEvaluationError({
+        code: "AI_INVALID_RESPONSE",
+        message: "AI returned an invalid response. Your answer has been saved.",
+        retryable: false,
+      });
+    }
+
+    if (!response.ok || !data.success) {
+      throw new AiEvaluationError({
+        code: (data.code ?? "AI_UNKNOWN") as AiErrorCode,
+        message: data.message ?? "AI evaluation is temporarily unavailable. Your answer has been saved.",
+        retryable: data.retryable === true,
+        retryAfterSeconds:
+          Number.isFinite(Number(data.retryAfterSeconds))
+            ? Number(data.retryAfterSeconds)
+            : undefined,
+      });
+    }
+
+    if (!data.result) {
+      throw new AiEvaluationError({
+        code: "AI_INVALID_RESPONSE",
+        message: "No AI evaluation was returned. Your answer has been saved.",
+        retryable: false,
+      });
+    }
+
     return data.result;
   } catch (error: any) {
     if (error?.name === "AbortError") {
-      const timeoutError = new Error("AI_TIMEOUT");
-      timeoutError.name = "AI_TIMEOUT";
-      throw timeoutError;
+      throw new AiEvaluationError({
+        code: "AI_TIMEOUT",
+        message: "AI is taking longer than expected. Your answer has been saved.",
+        retryable: true,
+      });
     }
-    throw error;
+
+    if (error instanceof AiEvaluationError) {
+      throw error;
+    }
+
+    throw new AiEvaluationError({
+      code: "AI_NETWORK",
+      message: "The AI service could not be reached. Your answer has been saved.",
+      retryable: true,
+    });
   } finally {
     clearTimeout(timeout);
   }
@@ -60,17 +105,32 @@ async function requestEvaluationOnce(
 
 async function requestEvaluation(question: InterviewQuestion, transcript: string) {
   let lastError: unknown;
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       return await requestEvaluationOnce(question, transcript);
     } catch (error) {
       lastError = error;
-      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      if (!(error instanceof AiEvaluationError)) {
+        break;
+      }
+
+      // Never retry daily quota or other non-retryable failures.
+      if (!error.retryable || error.code === "AI_DAILY_QUOTA") {
+        break;
+      }
+
+      if (attempt < MAX_ATTEMPTS) {
+        const delayMs = Math.min(
+          Math.max((error.retryAfterSeconds ?? 2) * 1000, 1200),
+          5000
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
-  if (lastError instanceof Error && lastError.name === "AI_TIMEOUT") {
-    throw new Error("Your answer is safe, but the AI evaluation is taking longer than expected. Try again or continue with teacher review.");
-  }
+
   throw lastError;
 }
 

@@ -19,8 +19,14 @@ type InterviewStep =
 
 export default function MockInterviewEvaluation() {
   const { transcript, setTranscript, status, speechMetrics } = useSpeechContext();
-  const { result, loading, error, evaluate } = useEvaluation();
-  const { resetEvaluation, setResult, setError } = useEvaluationContext();
+  const { result, loading, error, errorCode, errorRetryable, evaluate } = useEvaluation();
+  const {
+    resetEvaluation,
+    setResult,
+    setError,
+    setErrorCode,
+    setErrorRetryable,
+  } = useEvaluationContext();
   const {
     candidateName,
     selectedRecruiter,
@@ -196,6 +202,8 @@ export default function MockInterviewEvaluation() {
       error ?? "AI evaluation unavailable"
     );
     setError(null);
+    setErrorCode(null);
+    setErrorRetryable(false);
     setResult(unavailable);
   };
 
@@ -279,9 +287,32 @@ export default function MockInterviewEvaluation() {
         <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <p className="font-bold">Your answer is safe.</p>
           <p className="mt-1">{error}</p>
+
+          {errorCode === "AI_DAILY_QUOTA" && (
+            <p className="mt-2 rounded-lg bg-white/80 px-3 py-2 font-semibold text-amber-900">
+              Live AI scoring will be skipped for this answer. Observer and teacher assessment can continue normally.
+            </p>
+          )}
+
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <button type="button" onClick={evaluate} disabled={!canSubmitMain} className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 font-bold text-white disabled:bg-slate-300">Try AI Evaluation Again</button>
-            <button type="button" onClick={continueWithTeacherReview} disabled={!hasAnswer || recorderBusy || loading} className="min-h-11 rounded-xl border border-amber-600 bg-white px-4 py-2 font-bold text-amber-800 disabled:opacity-50">Continue with Teacher Review</button>
+            {errorRetryable && errorCode !== "AI_DAILY_QUOTA" && (
+              <button
+                type="button"
+                onClick={evaluate}
+                disabled={!canSubmitMain}
+                className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 font-bold text-white disabled:bg-slate-300"
+              >
+                Try AI Evaluation Again
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={continueWithTeacherReview}
+              disabled={!hasAnswer || recorderBusy || loading}
+              className="min-h-11 rounded-xl border border-amber-600 bg-white px-4 py-2 font-bold text-amber-800 disabled:opacity-50"
+            >
+              Continue with Teacher Review
+            </button>
           </div>
         </div>
       )}
