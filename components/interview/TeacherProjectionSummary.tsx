@@ -10,6 +10,7 @@ import {
   PriorityArea,
   TeacherDecision,
 } from "@/services/teacherFeedbackService";
+import { OBSERVER_ROLE_LABELS, ObserverSessionSnapshot } from "@/services/observerSessionTypes";
 
 interface TeacherProjectionSummaryProps {
   attempts: InterviewAttempt[];
@@ -124,11 +125,30 @@ export default function TeacherProjectionSummary({
   const [copied, setCopied] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [observerSession, setObserverSession] = useState<ObserverSessionSnapshot | null>(null);
+  const [observerBaseUrl, setObserverBaseUrl] = useState("");
+  const [observerSessionBusy, setObserverSessionBusy] = useState(false);
+  const [observerSessionMessage, setObserverSessionMessage] = useState("");
 
   const storageKey = useMemo(
     () => `teacher-summary-v39:${candidateName}:${companyName}:${jobTitle}`,
     [candidateName, companyName, jobTitle],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setObserverBaseUrl(window.location.origin);
+  }, []);
+
+  const observerJoinUrl = useMemo(() => {
+    if (!observerSession || !observerBaseUrl.trim()) return "";
+    return `${observerBaseUrl.replace(/\/$/, "")}/observer?session=${encodeURIComponent(observerSession.id)}`;
+  }, [observerBaseUrl, observerSession]);
+
+  const observerQrUrl = useMemo(() => {
+    if (!observerJoinUrl) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(observerJoinUrl)}`;
+  }, [observerJoinUrl]);
 
   const assessmentSummary = useMemo(() => {
     const evaluatedAttempts = attempts.filter((attempt) => attempt.evaluation.evaluationStatus !== "unavailable");
@@ -165,6 +185,38 @@ export default function TeacherProjectionSummary({
     () => buildIntegratedTeacherFeedback(attempts, report, scores, notes),
     [attempts, report, scores, notes],
   );
+
+  useEffect(() => {
+    if (!open || !observerSession) return;
+    let cancelled = false;
+
+    const sync = async () => {
+      try {
+        const response = await fetch(`/api/observer-session?id=${encodeURIComponent(observerSession.id)}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { session?: ObserverSessionSnapshot };
+        if (cancelled || !data.session) return;
+        setObserverSession(data.session);
+
+        const received = data.session.submissions;
+        (Object.keys(received) as ObserverKey[]).forEach((key) => {
+          const submission = received[key];
+          if (!submission) return;
+          setScores((current) => ({ ...current, [key]: submission.scores }));
+          setNotes((current) => ({ ...current, [key]: submission.note }));
+        });
+      } catch {
+        // QR observer sync is optional; manual entry remains available on the teacher screen.
+      }
+    };
+
+    void sync();
+    const timer = window.setInterval(() => void sync(), 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [observerSession?.id, open]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -220,6 +272,41 @@ export default function TeacherProjectionSummary({
     return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
   };
 
+  const createObserverSession = async () => {
+    setObserverSessionBusy(true);
+    setObserverSessionMessage("");
+    try {
+      const response = await fetch("/api/observer-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", candidateName, companyName, jobTitle }),
+      });
+      const data = (await response.json()) as { session?: ObserverSessionSnapshot; error?: string };
+      if (!response.ok || !data.session) throw new Error(data.error || "Unable to create observer session.");
+      setObserverSession(data.session);
+      setActiveStep(2);
+    } catch (error) {
+      setObserverSessionMessage(error instanceof Error ? error.message : "Unable to create observer session.");
+    } finally {
+      setObserverSessionBusy(false);
+    }
+  };
+
+  const closeObserverSession = async () => {
+    const current = observerSession;
+    setObserverSession(null);
+    if (!current) return;
+    try {
+      await fetch("/api/observer-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", sessionId: current.id }),
+      });
+    } catch {
+      // The local session expires automatically; closing it is best-effort.
+    }
+  };
+
   const generateTeacherFeedback = () => {
     setTeacherFeedback(integrated.finalFeedback);
     setPriorityArea(integrated.priorityArea);
@@ -250,7 +337,7 @@ export default function TeacherProjectionSummary({
             <header className="bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-950 p-5 text-white sm:p-8 print:bg-white print:text-slate-950">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[.2em] text-blue-200 print:text-slate-500">Teacher projection summary · Fix 39</p>
+                  <p className="text-xs font-bold uppercase tracking-[.2em] text-blue-200 print:text-slate-500">Teacher projection summary · Fix 39.1</p>
                   <h1 className="mt-2 text-2xl font-black sm:text-4xl">Observer + AI/Backup + Teacher Judgment</h1>
                   <p className="mt-2 text-sm text-slate-300 print:text-slate-600">
                     {candidateName} · {jobTitle} at {companyName} · Recruiter: {recruiterName}
@@ -284,6 +371,63 @@ export default function TeacherProjectionSummary({
                 <SummaryMetric label="Relevance" value={`${assessmentSummary.relevance}/10`} />
                 <SummaryMetric label="Readiness" value={report.readiness} />
               </section>
+
+              {(activeStep === 2 || activeStep === 4 || activeStep === 5) && (
+                <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 sm:p-5 print:hidden">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Fix 39.1 · QR Observer Assessment</p>
+                      <h2 className="mt-1 text-xl font-black text-slate-950">Independent observer input from personal phones</h2>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Observers score independently while the candidate is speaking. AI/Backup results are hidden on the observer page. The teacher screen polls only observer submissions; it does not call Gemini.</p>
+                    </div>
+                    {!observerSession ? (
+                      <button type="button" onClick={() => void createObserverSession()} disabled={observerSessionBusy} className="rounded-xl bg-cyan-700 px-4 py-3 font-black text-white disabled:opacity-50">
+                        {observerSessionBusy ? "Creating…" : "Start QR Observer Session"}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => void closeObserverSession()} className="rounded-xl border border-cyan-300 bg-white px-4 py-2 font-bold text-cyan-900">Close Session</button>
+                    )}
+                  </div>
+
+                  {observerSessionMessage && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{observerSessionMessage}</p>}
+
+                  {observerSession && (
+                    <div className="mt-5 grid gap-5 lg:grid-cols-[250px_1fr]">
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        {observerQrUrl ? (
+                          <img src={observerQrUrl} alt="QR code for observer assessment" width={220} height={220} className="mx-auto rounded-xl" />
+                        ) : null}
+                        <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">Session code</p>
+                        <p className="mt-1 text-3xl font-black tracking-[0.22em] text-slate-950">{observerSession.id}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-black uppercase tracking-wide text-slate-600">Observer base URL
+                          <input value={observerBaseUrl} onChange={(event) => setObserverBaseUrl(event.target.value)} className="mt-2 w-full rounded-xl border border-cyan-200 bg-white p-3 text-sm font-normal normal-case tracking-normal text-slate-800 outline-none focus:border-cyan-500" />
+                        </label>
+                        <p className="mt-2 break-all text-xs text-slate-500">Join link: {observerJoinUrl}</p>
+                        {(observerBaseUrl.includes("localhost") || observerBaseUrl.includes("127.0.0.1")) && (
+                          <p className="mt-2 rounded-xl bg-amber-100 p-3 text-xs leading-5 text-amber-900"><strong>Phone access warning:</strong> localhost cannot be opened from another device. For a local classroom session, run Next.js on <code>0.0.0.0</code> and replace this URL with the teacher laptop LAN address, for example <code>http://192.168.1.20:3000</code>.</p>
+                        )}
+
+                        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                          {(Object.keys(OBSERVER_ROLE_LABELS) as ObserverKey[]).map((key) => {
+                            const submission = observerSession.submissions[key];
+                            return (
+                              <div key={key} className={`rounded-xl border p-3 ${submission ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                                <p className="text-xs font-black text-slate-800">{OBSERVER_ROLE_LABELS[key]}</p>
+                                <p className={`mt-2 text-sm font-black ${submission ? "text-emerald-700" : "text-slate-400"}`}>{submission ? "Submitted ✓" : "Waiting…"}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-3 text-sm font-black text-cyan-950">{Object.keys(observerSession.submissions).length}/3 Observer Assessments Received</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">If a phone cannot connect, use the manual observer controls below. QR input is a convenience layer, not a single point of failure.</p>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {(activeStep === 1 || activeStep === 3 || activeStep === 4 || activeStep === 5) && (
                 <section className="overflow-hidden rounded-2xl border border-slate-200">
@@ -421,10 +565,10 @@ export default function TeacherProjectionSummary({
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h2 className="font-black text-indigo-950">Teacher’s Final Feedback</h2>
-                      <p className="mt-1 text-sm text-indigo-800">Generate a concise English comment from the available evidence, then edit it before presenting.</p>
+                      <p className="mt-1 text-sm text-indigo-800">Build a concise English summary locally from observer scores and existing AI/Backup evidence, then edit it before presenting. No additional AI request is made.</p>
                     </div>
                     <button type="button" onClick={generateTeacherFeedback} className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white print:hidden">
-                      Generate Teacher Feedback
+                      Build Teacher Summary
                     </button>
                   </div>
 
@@ -464,7 +608,7 @@ export default function TeacherProjectionSummary({
                       onChange={(event) => setTeacherFeedback(event.target.value)}
                       rows={6}
                       className="mt-2 w-full resize-y rounded-xl border border-indigo-200 bg-white p-4 font-normal leading-7 text-slate-900 outline-none focus:border-indigo-500"
-                      placeholder="Click Generate Teacher Feedback, then edit the final comment if needed."
+                      placeholder="Click Build Teacher Summary, then edit the final comment if needed."
                     />
                   </label>
 

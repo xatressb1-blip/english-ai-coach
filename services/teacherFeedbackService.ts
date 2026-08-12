@@ -211,15 +211,17 @@ export function buildIntegratedTeacherFeedback(
     (value): value is number => value !== null,
   );
   const observerAverage = completedObserverScores.length ? average(completedObserverScores) : null;
-  const combinedReference = observerAverage === null
-    ? report.overallScore
-    : average([observerAverage, report.overallScore]);
-
-  const suggestedDecision: TeacherDecision = combinedReference >= 8
-    ? "Ready for a full mock interview"
-    : combinedReference >= 6.5
-      ? "Ready for further practice"
-      : "Needs targeted improvement";
+  const suggestedDecision: TeacherDecision = observerAverage === null
+    ? report.overallScore >= 8
+      ? "Ready for a full mock interview"
+      : report.overallScore >= 6.5
+        ? "Ready for further practice"
+        : "Needs targeted improvement"
+    : observerAverage >= 8 && report.overallScore >= 8
+      ? "Ready for a full mock interview"
+      : observerAverage >= 6.5 && report.overallScore >= 6.5
+        ? "Ready for further practice"
+        : "Needs targeted improvement";
 
   const finalFeedback = [
     `The candidate completed all three interview questions and showed ${strongest}.`,
