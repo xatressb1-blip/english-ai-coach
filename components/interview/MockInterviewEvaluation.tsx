@@ -9,6 +9,7 @@ import { enqueueSpeech } from "@/services/speechQueueService";
 import { requestFollowUp } from "@/services/followUpService";
 import { SpeechMetrics } from "@/types/speechMetrics";
 import { buildUnavailableEvaluation } from "@/services/evaluationService";
+import { buildBackupRubricEvaluation } from "@/services/backupRubricEvaluation";
 
 type InterviewStep =
   | "main-answer"
@@ -47,6 +48,7 @@ export default function MockInterviewEvaluation() {
   const [evaluationSeconds, setEvaluationSeconds] = useState(0);
   const [activeWaitingStarted, setActiveWaitingStarted] = useState(false);
   const decisionStartedRef = useRef(false);
+  const backupTriggeredRef = useRef(false);
   const mainSpeechMetricsRef = useRef<SpeechMetrics | null>(null);
 
   const hasAnswer = transcript.trim().length > 0;
@@ -83,6 +85,36 @@ export default function MockInterviewEvaluation() {
     setAcknowledging(true);
     enqueueSpeech(acknowledgement, () => setAcknowledging(false));
   };
+
+  useEffect(() => {
+    const isPresentationQuestion = currentQuestion.id >= 1 && currentQuestion.id <= 3;
+    if (!isPresentationQuestion || !error || result || loading || recorderBusy || !hasAnswer || backupTriggeredRef.current) {
+      return;
+    }
+
+    backupTriggeredRef.current = true;
+    const backup = buildBackupRubricEvaluation(
+      currentQuestion,
+      transcript.trim(),
+      error
+    );
+    setError(null);
+    setErrorCode(null);
+    setErrorRetryable(false);
+    setResult(backup);
+  }, [
+    currentQuestion,
+    error,
+    hasAnswer,
+    loading,
+    recorderBusy,
+    result,
+    setError,
+    setErrorCode,
+    setErrorRetryable,
+    setResult,
+    transcript,
+  ]);
 
   useEffect(() => {
     if (!result || decisionStartedRef.current) return;
@@ -147,6 +179,7 @@ export default function MockInterviewEvaluation() {
     setActiveWaitingStarted(false);
     setEvaluationSeconds(0);
     decisionStartedRef.current = false;
+    backupTriggeredRef.current = false;
     mainSpeechMetricsRef.current = null;
   }, [currentQuestionIndex]);
 
@@ -196,15 +229,23 @@ export default function MockInterviewEvaluation() {
   const continueWithTeacherReview = () => {
     if (!hasAnswer || loading || recorderBusy) return;
     const safeTranscript = transcript.trim();
-    const unavailable = buildUnavailableEvaluation(
-      currentQuestion,
-      safeTranscript,
-      error ?? "AI evaluation unavailable"
-    );
+    const presentationQuestion = currentQuestion.id >= 1 && currentQuestion.id <= 3;
+    const fallback = presentationQuestion
+      ? buildBackupRubricEvaluation(
+          currentQuestion,
+          safeTranscript,
+          error ?? "Live AI evaluation unavailable"
+        )
+      : buildUnavailableEvaluation(
+          currentQuestion,
+          safeTranscript,
+          error ?? "AI evaluation unavailable"
+        );
+    backupTriggeredRef.current = presentationQuestion;
     setError(null);
     setErrorCode(null);
     setErrorRetryable(false);
-    setResult(unavailable);
+    setResult(fallback);
   };
 
   return (

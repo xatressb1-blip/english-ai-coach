@@ -140,6 +140,9 @@ export default function InterviewReview({
                       <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreTone(attempt.evaluation.overall)}`}>
                         {attempt.evaluation.overall.toFixed(1)}/10
                       </span>
+                      {attempt.evaluation.evaluationSource === "backup_rubric" && (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Backup Rubric</span>
+                      )}
                       {focus && (
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                           Coverage {focus.coverageScore}%
@@ -169,7 +172,7 @@ export default function InterviewReview({
                   </div>
 
                   <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Recruiter assessment</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{attempt.evaluation.evaluationSource === "backup_rubric" ? "Backup rubric assessment" : "Recruiter assessment"}</p>
                     <p className="mt-3 text-sm leading-7 text-blue-950">{attempt.evaluation.overallFeedback}</p>
                     {focus && (
                       <div className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-3">

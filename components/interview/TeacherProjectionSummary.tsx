@@ -132,6 +132,8 @@ export default function TeacherProjectionSummary({
         ? average(speechAttempts.map((attempt) => attempt.speechMetrics?.wordsPerMinute ?? 0).filter(Boolean))
         : 0,
       evaluatedCount: evaluatedAttempts.length,
+      liveAiCount: evaluatedAttempts.filter((attempt) => attempt.evaluation.evaluationSource !== "backup_rubric").length,
+      backupCount: evaluatedAttempts.filter((attempt) => attempt.evaluation.evaluationSource === "backup_rubric").length,
       fillers: speechAttempts.length
         ? speechAttempts.reduce((sum, attempt) => sum + (attempt.speechMetrics?.fillerWordCount ?? 0), 0)
         : 0,
@@ -189,14 +191,19 @@ export default function TeacherProjectionSummary({
 
               <section className="overflow-hidden rounded-2xl border border-slate-200">
                 <div className="bg-slate-100 px-4 py-3">
-                  <h2 className="font-black text-slate-900">AI summary by question</h2>
-                  <p className="mt-1 text-xs text-slate-600">Use this evidence to compare with the three observers. AI feedback is advisory, not the final judgement.</p>
+                  <h2 className="font-black text-slate-900">Live AI / Backup Rubric summary by question</h2>
+                  <p className="mt-1 text-xs text-slate-600">Use this evidence to compare with the three observers. Backup Rubric is a transparent local fallback, not a live AI result.</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800">Live AI: {aiSummary.liveAiCount}</span>
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">Backup Rubric: {aiSummary.backupCount}</span>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="bg-white text-xs uppercase text-slate-500">
                       <tr>
                         <th className="px-4 py-3">Question</th>
+                        <th className="px-4 py-3">Source</th>
                         <th className="px-4 py-3">Overall</th>
                         <th className="px-4 py-3">Coverage</th>
                         <th className="px-4 py-3">Evidence</th>
@@ -208,6 +215,15 @@ export default function TeacherProjectionSummary({
                       {attempts.slice(0, 3).map((attempt, index) => (
                         <tr key={`${attempt.questionId}-${index}`}>
                           <td className="px-4 py-3 font-semibold text-slate-900">Q{index + 1}. {attempt.questionTitle}</td>
+                          <td className="px-4 py-3">
+                            {attempt.evaluation.evaluationStatus === "unavailable" ? (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">Unavailable</span>
+                            ) : attempt.evaluation.evaluationSource === "backup_rubric" ? (
+                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Backup Rubric</span>
+                            ) : (
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Live AI</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 font-black">{attempt.evaluation.evaluationStatus === "unavailable" ? "Unavailable" : `${attempt.evaluation.overall}/10`}</td>
                           <td className="px-4 py-3">{attempt.evaluation.evaluationStatus === "unavailable" ? "Teacher review" : `${attempt.evaluation.focusAnalysis.coverageScore}%`}</td>
                           <td className="px-4 py-3">{attempt.evaluation.evaluationStatus === "unavailable" ? "Teacher review" : `${attempt.evaluation.focusAnalysis.evidenceQualityScore}%`}</td>
@@ -267,7 +283,7 @@ export default function TeacherProjectionSummary({
 
               <section className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                  <h2 className="font-black text-emerald-900">AI-identified strengths</h2>
+                  <h2 className="font-black text-emerald-900">Assessment-identified strengths</h2>
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-emerald-950">
                     {report.strengths.map((item) => <li key={item}>✓ {item}</li>)}
                   </ul>
@@ -283,10 +299,10 @@ export default function TeacherProjectionSummary({
               <section className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-5">
                 <h2 className="font-black text-indigo-950">Teacher conclusion</h2>
                 <p className="mt-2 text-sm leading-7 text-indigo-900">
-                  Compare the three observer scores with the AI evidence, resolve any differences, then state one confirmed strength and one priority action for the candidate’s next practice.
+                  Compare the three observer scores with the available Live AI or Backup Rubric evidence, resolve any differences, then state one confirmed strength and one priority action for the candidate’s next practice.
                 </p>
                 <p className="mt-3 text-xs leading-5 text-indigo-700">
-                  Important: eye contact, posture, facial expression, and professional presence must be judged by human observers. The AI summary does not reliably assess these behaviours.
+                  Important: eye contact, posture, facial expression, and professional presence must be judged by human observers. Backup Rubric results are local transcript-based estimates and must never be presented as live AI results.
                 </p>
               </section>
 

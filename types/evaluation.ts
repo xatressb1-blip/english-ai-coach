@@ -48,6 +48,8 @@ export interface CoachResult {
 export interface EvaluationResult {
   evaluationVersion: string;
   evaluationStatus?: "available" | "unavailable";
+  evaluationSource?: "live_ai" | "backup_rubric" | "unavailable";
+  backupLevel?: "good" | "developing" | "needs_improvement";
   evaluationError?: string;
   overall: number;
   overallFeedback: string;

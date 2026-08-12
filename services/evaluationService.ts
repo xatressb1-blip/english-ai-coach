@@ -170,6 +170,7 @@ function buildEvaluation(
   return {
     evaluationVersion: EVALUATION_VERSION,
     evaluationStatus: "available",
+    evaluationSource: "live_ai",
     overall: 0,
     overallFeedback: result.overallFeedback ?? "",
     grammar: buildGrammar(result),
@@ -271,6 +272,7 @@ export function buildUnavailableEvaluation(
   return {
     evaluationVersion: EVALUATION_VERSION,
     evaluationStatus: "unavailable",
+    evaluationSource: "unavailable",
     evaluationError: reason,
     overall: 0,
     overallFeedback: "AI evaluation was unavailable. Use observer evidence and teacher judgement.",
