@@ -26,7 +26,7 @@ MAIN FEATURES
 9. Copy Final Feedback button.
 10. Presentation reveal steps: Candidate -> Observers -> Assessment -> Compare -> Teacher.
 11. Draft observer scores/notes/teacher feedback are saved in localStorage for presentation safety.
-12. No additional Gemini request is required to generate teacher feedback.
+12. No additional Gemini request is required to build the teacher summary.
 
 IMPORTANT SAFETY RULES
 ----------------------
@@ -56,7 +56,7 @@ TEST
 3. Rate all five criteria for each observer using 0 / 1 / 2.
 4. Add one strong point and one area for improvement per observer.
 5. Open step 4 Compare and verify Agreements and Differences.
-6. Open step 5 Teacher and click Generate Teacher Feedback.
+6. Open step 5 Teacher and click Build Teacher Summary.
 7. Edit the English feedback if needed.
 8. Select Priority improvement and Teacher's final decision.
 9. Click Copy Final Feedback.
@@ -70,3 +70,9 @@ git add components/interview/TeacherProjectionSummary.tsx
 git add README-FIX-39.txt
 git commit -m "Fix 39: integrate observer assessment and teacher final feedback"
 git push origin master
+
+IMPORTANT PRESENTATION RULE
+- Build Teacher Summary runs locally in the browser.
+- No additional Gemini or network request is made after the three observers enter their scores.
+- The app does not calculate a new automatic final score by averaging AI and observer scores.
+- The teacher chooses the final decision and may edit the final English feedback before projection.
