@@ -3,6 +3,15 @@ export type ClassroomSessionPhase = "ready" | "answering" | "review" | "complete
 export type RubricScore = 0 | 1 | 2 | null;
 export type RubricScores = RubricScore[];
 
+export const CLASSROOM_FIXED_STUDENTS = ["MrHuy", "MrLong", "MrKhánh", "MrHoàng"] as const;
+
+export const CLASSROOM_FIXED_ROLES = {
+  candidate: CLASSROOM_FIXED_STUDENTS[0],
+  content: CLASSROOM_FIXED_STUDENTS[1],
+  language: CLASSROOM_FIXED_STUDENTS[2],
+  professional: CLASSROOM_FIXED_STUDENTS[3],
+} as const;
+
 export interface ClassroomObservation {
   candidateIndex: number;
   observerIndex: number;

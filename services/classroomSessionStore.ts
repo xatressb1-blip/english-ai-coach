@@ -5,7 +5,7 @@ import type {
   ClassroomSessionSnapshot,
   RubricScores,
 } from "@/services/classroomSessionTypes";
-import { getClassroomObserverRole } from "@/services/classroomSessionTypes";
+import { CLASSROOM_FIXED_STUDENTS, getClassroomObserverRole } from "@/services/classroomSessionTypes";
 
 type SessionMap = Map<string, ClassroomSessionSnapshot>;
 
@@ -46,13 +46,10 @@ function generateId() {
   return Date.now().toString(36).slice(-6).toUpperCase();
 }
 
-function normalizeNames(values: unknown[]): string[] {
-  const names = values.slice(0, 4).map((value, index) => {
-    const clean = String(value ?? "").trim().replace(/\s+/g, " ");
-    return clean || `Student ${index + 1}`;
-  });
-  while (names.length < 4) names.push(`Student ${names.length + 1}`);
-  return names;
+function normalizeNames(_values: unknown[]): string[] {
+  // Fix 42.1 presentation class: identities are intentionally fixed so the
+  // candidate and the three observer stations cannot be mixed up on event day.
+  return [...CLASSROOM_FIXED_STUDENTS];
 }
 
 function normalizeAssignments(values: unknown[]): number[] {

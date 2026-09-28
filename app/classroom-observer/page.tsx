@@ -273,7 +273,7 @@ export default function ClassroomObserverPage() {
               if (!assignedRole) return null;
               return (
                 <button key={index} type="button" onClick={() => void joinAsObserver(index)} className="rounded-2xl border border-slate-200 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50">
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Observer {index}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">{session.studentNames[index]} · Observer {index}</p>
                   <p className="mt-1 text-lg font-black text-slate-950">{CLASSROOM_ROLE_SHORT_LABELS[assignedRole]}</p>
                   <p className="mt-1 text-sm leading-5 text-slate-500">{CLASSROOM_ROLE_PROMPTS[assignedRole]}</p>
                 </button>
@@ -292,7 +292,7 @@ export default function ClassroomObserverPage() {
       <main className="mx-auto min-h-screen max-w-xl bg-slate-50 p-3 sm:p-6">
         <section className="rounded-3xl border border-emerald-200 bg-white p-7 text-center shadow-xl">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl">✓</div>
-          <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Observer {observerIndex} · {CLASSROOM_ROLE_SHORT_LABELS[role]}</p>
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{session.studentNames[observerIndex]} · Observer {observerIndex} · {CLASSROOM_ROLE_SHORT_LABELS[role]}</p>
           <h1 className="mt-2 text-2xl font-black text-slate-950">Interview completed</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">Your observation data has been saved for the teacher's final multi-source summary.</p>
           <p className="mt-4 text-lg font-black text-slate-950">{scoredCount}/5 criteria completed</p>
@@ -307,7 +307,7 @@ export default function ClassroomObserverPage() {
         <div className="bg-slate-950 p-4 text-white sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Observer {observerIndex} · {CLASSROOM_ROLE_SHORT_LABELS[role]}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">{session.studentNames[observerIndex]} · Observer {observerIndex} · {CLASSROOM_ROLE_SHORT_LABELS[role]}</p>
               <h1 className="mt-1 text-xl font-black">{session.studentNames[0]} · AI Interview</h1>
               <p className="mt-1 text-xs text-slate-300">{session.jobTitle} · {session.companyName}</p>
             </div>
@@ -337,9 +337,9 @@ export default function ClassroomObserverPage() {
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Current question</p>
-            <p className="mt-1 text-sm font-black text-slate-900">Q{currentQuestionIndex + 1} · {questionTitle(currentQuestionId)}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Observe the candidate directly. AI results are intentionally hidden so your assessment remains independent.</p>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">{session.phase === "ready" ? "Interview opening" : "Current question"}</p>
+            <p className="mt-1 text-sm font-black text-slate-900">{session.phase === "ready" ? "Professional greeting & readiness" : `Q${currentQuestionIndex + 1} · ${questionTitle(currentQuestionId)}`}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{session.phase === "ready" ? "Observe the candidate's greeting, listening behavior, confidence, and professional etiquette. The opening is not AI-scored." : "Observe the candidate directly. AI results are intentionally hidden so your assessment remains independent."}</p>
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">

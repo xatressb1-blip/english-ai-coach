@@ -20,9 +20,11 @@ import InterviewOpening from "./InterviewOpening";
 import InterviewClosing from "./InterviewClosing";
 import MockInterviewEvaluation from "./MockInterviewEvaluation";
 import CandidateQuestion from "./CandidateQuestion";
+import InterviewModeSelection from "./InterviewModeSelection";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [modeChosen, setModeChosen] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [levelChosen, setLevelChosen] = useState(false);
   const [positionChosen, setPositionChosen] = useState(false);
@@ -33,6 +35,7 @@ export default function InterviewEngine() {
 
   const { candidateName, currentQuestionIndex, totalQuestions, interviewFinished, flow, setFlow, startQuestion } = useInterviewContext();
 
+  if (!modeChosen) return <InterviewModeSelection onIndividual={() => setModeChosen(true)} />;
   if (!profileCompleted) return <CandidateProfile onContinue={() => setProfileCompleted(true)} />;
   if (!levelChosen) return <LevelSelection onContinue={() => setLevelChosen(true)} />;
   if (!positionChosen) return <InterviewPositionSetup onContinue={() => setPositionChosen(true)} />;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import SpeechRecorder from "@/components/SpeechRecorder";
 import LocalQrCode from "@/components/classroom/LocalQrCode";
 import RecruiterAvatar from "@/components/interview/RecruiterAvatar";
@@ -12,7 +13,7 @@ import { interviewQuestions } from "@/data/interviewQuestions";
 import type { EvaluationResult } from "@/types/evaluation";
 import type { SpeechMetrics } from "@/types/speechMetrics";
 import type { ClassroomObservationRole, ClassroomSessionSnapshot } from "@/services/classroomSessionTypes";
-import { CLASSROOM_ROLE_LABELS, CLASSROOM_ROLE_SHORT_LABELS } from "@/services/classroomSessionTypes";
+import { CLASSROOM_FIXED_STUDENTS, CLASSROOM_ROLE_LABELS, CLASSROOM_ROLE_SHORT_LABELS } from "@/services/classroomSessionTypes";
 import { buildBackupRubricEvaluation } from "@/services/backupRubricEvaluation";
 import { enqueueBackgroundEvaluation, resetBackgroundEvaluationQueue } from "@/services/backgroundEvaluationQueue";
 import { enqueueRecruiterSpeech, clearSpeechQueue } from "@/services/speechQueueService";
@@ -23,7 +24,7 @@ interface CandidateResult extends ClassroomSummaryCandidate {
   aiError?: string;
 }
 
-type ActivityStage = "setup" | "waiting" | "running" | "completed";
+type ActivityStage = "setup" | "waiting" | "opening" | "running" | "closing" | "completed";
 
 interface LanAddressOption {
   interfaceName: string;
@@ -52,7 +53,7 @@ function scoreTone(value: number) {
 
 export default function ClassroomRapidInterview() {
   const { transcript, status: speechStatus, speechMetrics, resetSpeech } = useSpeechContext();
-  const [studentNames, setStudentNames] = useState(["Candidate 1", "Observer 1", "Observer 2", "Observer 3"]);
+  const studentNames = [...CLASSROOM_FIXED_STUDENTS];
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany.id);
   const [selectedJobRoleId, setSelectedJobRoleId] = useState(defaultCompany.roles[0].id);
   const [selectedRecruiterId, setSelectedRecruiterId] = useState(defaultRecruiter.id);
@@ -68,6 +69,7 @@ export default function ClassroomRapidInterview() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [nextQuestionCountdown, setNextQuestionCountdown] = useState<number | null>(null);
+  const [openingStep, setOpeningStep] = useState<0 | 1>(0);
   const capturedQuestionsRef = useRef<Set<number>>(new Set());
   const autoAdvancedQuestionsRef = useRef<Set<number>>(new Set());
 
@@ -180,11 +182,26 @@ export default function ClassroomRapidInterview() {
     }
   };
 
+  const speakRecruiterLine = (text: string) => {
+    clearSpeechQueue();
+    setRecruiterSpeaking(true);
+    enqueueRecruiterSpeech(text, selectedRecruiter, () => setRecruiterSpeaking(false));
+  };
+
   const speakQuestion = (questionId: number) => {
     const question = questionById(questionId);
-    setRecruiterSpeaking(true);
-    enqueueRecruiterSpeech(question.title, selectedRecruiter, () => setRecruiterSpeaking(false));
+    speakRecruiterLine(question.title);
   };
+
+  const openingLines = [
+    `Good morning, Mr. Huy. Welcome to ${selectedCompany.name}. I'm ${selectedRecruiter.shortName}, your interviewer today. Thank you for joining us.`,
+    "Please make yourself comfortable. We'll have a short interview today. Are you ready to begin?",
+  ] as const;
+
+  const candidateOpeningCues = [
+    "Greet the recruiter professionally and thank them for the opportunity.",
+    "Confirm that you are ready to begin the interview.",
+  ] as const;
 
   const createSession = async () => {
     setSessionBusy(true);
@@ -193,6 +210,7 @@ export default function ClassroomRapidInterview() {
     resetSpeech();
     setResults([]);
     setNextQuestionCountdown(null);
+    setOpeningStep(0);
     capturedQuestionsRef.current.clear();
     autoAdvancedQuestionsRef.current.clear();
 
@@ -234,10 +252,25 @@ export default function ClassroomRapidInterview() {
     setElapsedSeconds(0);
     setActivityStartedAt(Date.now());
     setNextQuestionCountdown(null);
+    setOpeningStep(0);
     autoAdvancedQuestionsRef.current.clear();
+    setStage("opening");
+    const updated = await updateServerRound(0, "ready");
+    if (updated) speakRecruiterLine(openingLines[0]);
+  };
+
+  const advanceOpening = async () => {
+    if (!session || recruiterSpeaking) return;
+    if (openingStep === 0) {
+      setOpeningStep(1);
+      speakRecruiterLine(openingLines[1]);
+      return;
+    }
+
+    resetSpeech();
     setStage("running");
     const updated = await updateServerRound(0, "answering");
-    if (updated) speakQuestion(updated.questionAssignments[0] ?? 1);
+    if (updated) speakRecruiterLine(`Great. Let's begin. ${questionById(updated.questionAssignments[0] ?? 1).title}`);
   };
 
   const saveQuestionResult = (questionIndex: number, evaluation: EvaluationResult, aiState: CandidateResult["aiState"], aiError?: string) => {
@@ -328,6 +361,15 @@ export default function ClassroomRapidInterview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextQuestionCountdown, session?.currentRound, stage]);
 
+  const startClosing = async () => {
+    if (!session || recruiterSpeaking) return;
+    clearSpeechQueue();
+    resetSpeech();
+    setStage("closing");
+    await updateServerRound(session.questionAssignments.length - 1, "review");
+    speakRecruiterLine(`Thank you, Mr. Huy. That concludes your interview today. It was a pleasure speaking with you.`);
+  };
+
   const openTeacherSummary = () => {
     // Keep the server session in review mode so observer phones can finish
     // their rubric while the teacher summary is already visible.
@@ -346,6 +388,7 @@ export default function ClassroomRapidInterview() {
     setElapsedSeconds(0);
     setActivityStartedAt(null);
     setNextQuestionCountdown(null);
+    setOpeningStep(0);
     capturedQuestionsRef.current.clear();
     autoAdvancedQuestionsRef.current.clear();
     if (!current) return;
@@ -361,7 +404,9 @@ export default function ClassroomRapidInterview() {
       <div className="mx-auto w-full max-w-6xl py-4 sm:py-8">
         <SceneBackdrop scene="lobby" overlay="dark" className="rounded-[30px] border border-slate-700 shadow-2xl">
           <div className="p-5 text-white sm:p-8 lg:p-10">
-            <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-blue-100">Fix 42 · AI Rapid Interview</span>
+            <Link href="/interview" className="mb-4 inline-flex text-xs font-black text-blue-100 transition hover:text-white">← Back to Interview Modes</Link>
+            <br />
+            <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-blue-100">Fix 42.1 · Authentic Classroom Interview</span>
             <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl">One candidate. Three questions. Three professional observers.</h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">The candidate completes the full three-question interview. The other three students each observe one fixed dimension: Content, English, or Professional Performance. AI analyzes each answer in the background while the interview continues.</p>
           </div>
@@ -369,20 +414,17 @@ export default function ClassroomRapidInterview() {
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-7">
-            <h2 className="text-xl font-black text-slate-950">1. Assign the four students</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">Student 1 is the candidate. Students 2–4 remain observers throughout all three questions.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {studentNames.map((name, index) => (
-                <label key={index} className="text-sm font-bold text-slate-700">
-                  {index === 0 ? "Candidate" : `Observer ${index}`}
-                  <input value={name} onChange={(event) => setStudentNames((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-blue-500" />
-                </label>
-              ))}
+            <h2 className="text-xl font-black text-slate-950">1. Today&apos;s interview team</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">The presentation class uses fixed identities so every student can move directly into the assigned professional role.</p>
+            <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Candidate</p>
+              <p className="mt-1 text-xl font-black text-slate-950">{studentNames[0]}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Completes the authentic interview opening and Q1 → Q2 → Q3.</p>
             </div>
-            <div className="mt-5 grid gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
               {OBSERVER_INDEXES.map((index, roleIndex) => {
                 const role = OBSERVER_ROLES[roleIndex];
-                return <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Observer {index}</p><p className="mt-1 text-sm font-black text-slate-900">{CLASSROOM_ROLE_SHORT_LABELS[role]}</p><p className="mt-1 text-xs leading-5 text-slate-500">{CLASSROOM_ROLE_LABELS[role].split("·")[1]?.trim()}</p></div>;
+                return <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">{studentNames[index]} · Observer {index}</p><p className="mt-1 text-sm font-black text-slate-900">{CLASSROOM_ROLE_SHORT_LABELS[role]}</p><p className="mt-1 text-xs leading-5 text-slate-500">{CLASSROOM_ROLE_LABELS[role].split("·")[1]?.trim()}</p></div>;
               })}
             </div>
           </div>
@@ -406,7 +448,7 @@ export default function ClassroomRapidInterview() {
                 </select>
               </label>
             </div>
-            <button type="button" onClick={() => void createSession()} disabled={sessionBusy || studentNames.some((name) => !name.trim())} className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-50">{sessionBusy ? "Creating classroom session…" : "Create Classroom Session"}</button>
+            <button type="button" onClick={() => void createSession()} disabled={sessionBusy} className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-50">{sessionBusy ? "Creating classroom session…" : "Create Classroom Session"}</button>
             <div className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold ${serverReady === "ready" ? "bg-emerald-50 text-emerald-700" : serverReady === "error" ? "bg-amber-50 text-amber-800" : "bg-slate-50 text-slate-500"}`}>
               <span className={`h-2.5 w-2.5 rounded-full ${serverReady === "ready" ? "bg-emerald-500" : serverReady === "error" ? "bg-amber-500" : "animate-pulse bg-slate-400"}`} />
               {serverReady === "ready" ? "Classroom session service ready" : serverReady === "error" ? "Session service needs attention — production mode is recommended for LAN use" : "Checking classroom session service…"}
@@ -438,7 +480,7 @@ export default function ClassroomRapidInterview() {
               const joined = session.joinedStudents.includes(index);
               return (
                 <article key={index} className={`rounded-3xl border p-4 text-center ${joined ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Observer {index}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">{session.studentNames[index]} · Observer {index}</p>
                   <h2 className="mt-1 text-lg font-black text-slate-950">{CLASSROOM_ROLE_SHORT_LABELS[role]}</h2>
                   {url ? <LocalQrCode value={url} size={180} className="mx-auto mt-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" /> : <div className="mx-auto mt-3 flex h-[180px] w-[180px] items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">Waiting for LAN address…</div>}
                   <p className="mt-3 text-xs leading-5 text-slate-500">{CLASSROOM_ROLE_LABELS[role].split("·")[1]?.trim()}</p>
@@ -458,8 +500,85 @@ export default function ClassroomRapidInterview() {
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950"><strong>Role assignment:</strong> Observer 1 = Content, Observer 2 = English, Observer 3 = Professional. All three observe the same candidate through Q1 → Q2 → Q3.</div>
           </div>
 
-          <button type="button" onClick={() => void startActivity()} className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg transition hover:bg-blue-700">Start AI Interview → Q1</button>
+          <button type="button" onClick={() => void startActivity()} className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg transition hover:bg-blue-700">Enter Interview Room →</button>
           <p className="mt-2 text-center text-xs text-slate-500">{session.joinedStudents.length}/3 observer phones connected. You may still start with a paper-rubric fallback if one phone cannot connect; the candidate interview and AI evaluation remain available.</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (stage === "opening" && session) {
+    return (
+      <div className="mx-auto w-full max-w-6xl py-3 sm:py-6">
+        <SceneBackdrop scene="room" overlay="dark" className="rounded-[30px] border border-slate-700 text-white shadow-2xl">
+          <div className="p-5 sm:p-7 lg:p-9">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-200">Interview Opening · Step {openingStep + 1} of 2</p>
+                <p className="mt-1 text-sm text-slate-300">{selectedCompany.name} · {selectedJobRole.title}</p>
+              </div>
+              <span className="rounded-full bg-white/10 px-3 py-2 text-xs font-black">{mmss(elapsedSeconds)}</span>
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr] lg:items-center">
+              <div className="text-center">
+                <RecruiterAvatar recruiter={selectedRecruiter} state={recruiterSpeaking ? "speaking" : "listening"} size="xl" showStatusDot showWaveform priority />
+                <p className="mt-3 font-black">{selectedRecruiter.name}</p>
+                <p className="text-xs text-blue-200">{recruiterSpeaking ? "Recruiter is speaking…" : `Listening to ${candidateName}`}</p>
+              </div>
+              <div className="rounded-3xl border border-white/15 bg-slate-950/70 p-5 backdrop-blur sm:p-7">
+                <span className="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-black text-blue-100">{openingStep === 0 ? "Greeting & Welcome" : "Readiness to Begin"}</span>
+                <p className="mt-4 text-xl font-black leading-relaxed sm:text-3xl">“{openingLines[openingStep]}”</p>
+                <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">{candidateName} · Your turn</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-100">{candidateOpeningCues[openingStep]}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SceneBackdrop>
+
+        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-xl sm:p-7">
+          {recruiterSpeaking ? (
+            <><div className="mx-auto h-3 w-3 animate-pulse rounded-full bg-blue-600" /><p className="mt-3 font-black text-slate-950">Listen to the recruiter</p><p className="mt-1 text-sm text-slate-500">The candidate responds only after the recruiter finishes speaking.</p></>
+          ) : (
+            <><p className="text-lg font-black text-slate-950">{candidateName}: respond naturally now.</p><p className="mt-2 text-sm leading-6 text-slate-500">This opening is observed for professional etiquette but is not sent to Gemini and is not scored as Q1.</p><button type="button" onClick={() => void advanceOpening()} className="mt-5 rounded-xl bg-blue-600 px-7 py-4 font-black text-white shadow-lg hover:bg-blue-700">{openingStep === 0 ? "Candidate Responded · Continue →" : "Candidate Ready · Begin Q1 →"}</button></>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  if (stage === "closing" && session) {
+    return (
+      <div className="mx-auto w-full max-w-6xl py-3 sm:py-6">
+        <SceneBackdrop scene="room" overlay="dark" className="rounded-[30px] border border-slate-700 text-white shadow-2xl">
+          <div className="p-5 sm:p-7 lg:p-9">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-200">Interview Closing</p>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[260px_1fr] lg:items-center">
+              <div className="text-center">
+                <RecruiterAvatar recruiter={selectedRecruiter} state={recruiterSpeaking ? "speaking" : "listening"} size="xl" showStatusDot showWaveform priority />
+                <p className="mt-3 font-black">{selectedRecruiter.name}</p>
+                <p className="text-xs text-blue-200">{recruiterSpeaking ? "Recruiter is speaking…" : `Listening to ${candidateName}`}</p>
+              </div>
+              <div className="rounded-3xl border border-white/15 bg-slate-950/70 p-5 backdrop-blur sm:p-7">
+                <span className="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-black text-blue-100">Professional Closing</span>
+                <p className="mt-4 text-xl font-black leading-relaxed sm:text-3xl">“Thank you, Mr. Huy. That concludes your interview today. It was a pleasure speaking with you.”</p>
+                <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">{candidateName} · Your turn</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-100">Thank the recruiter briefly and professionally.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SceneBackdrop>
+
+        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-xl sm:p-7">
+          {recruiterSpeaking ? (
+            <><div className="mx-auto h-3 w-3 animate-pulse rounded-full bg-blue-600" /><p className="mt-3 font-black text-slate-950">Listen to the recruiter</p></>
+          ) : (
+            <><p className="text-lg font-black text-slate-950">{candidateName}: “Thank you for your time.”</p><p className="mt-2 text-sm text-slate-500">After the candidate closes the interview, open the teacher&apos;s multi-source summary.</p><button type="button" onClick={openTeacherSummary} className="mt-5 rounded-xl bg-slate-950 px-7 py-4 font-black text-white shadow-lg">Open Teacher Summary →</button></>
+          )}
         </section>
       </div>
     );
@@ -559,7 +678,7 @@ export default function ClassroomRapidInterview() {
 
           <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Observer rubrics</p><div className="mt-3 grid grid-cols-3 gap-2">{OBSERVER_ROLES.map((role) => { const item = observations.find((observation) => observation.role === role); return <div key={role} className={`rounded-xl border p-2 text-center ${item?.totalScore !== null && item ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"}`}><p className="text-[10px] font-black uppercase text-slate-500">{CLASSROOM_ROLE_SHORT_LABELS[role]}</p><p className="mt-1 text-sm font-black text-slate-900">{item?.totalScore !== null && item ? `${item.totalScore}/10` : item ? `${item.scores.filter((score) => score !== null).length}/5` : "—"}</p></div>; })}</div><p className="mt-3 text-xs leading-5 text-slate-500">Observers can score during the interview. Their AI-independent rubrics remain separate from the live AI results.</p></div>
 
-          {q3Captured && <button type="button" onClick={openTeacherSummary} className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg">Open Teacher Summary →</button>}
+          {q3Captured && <button type="button" onClick={() => void startClosing()} className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-4 font-black text-white shadow-lg">Conclude Interview →</button>}
         </aside>
       </section>
 
