@@ -31,6 +31,8 @@ import {
   speak,
   stopSpeaking,
 } from "./speechSynthesisService";
+import type { RecruiterProfile } from "@/data/recruiters";
+import type { SpeechVoiceOptions } from "./speechManager";
 
 /* ============================================================
  * Queue Item
@@ -44,6 +46,8 @@ interface SpeechTask {
   text: string;
 
   onFinished?: () => void;
+
+  voiceOptions?: SpeechVoiceOptions;
 
 }
 
@@ -102,7 +106,9 @@ function processQueue(): void {
 
       processQueue();
 
-    }
+    },
+
+    task.voiceOptions
 
   );
 
@@ -117,7 +123,8 @@ function processQueue(): void {
  */
 export function enqueueSpeech(
   text: string,
-  onFinished?: () => void
+  onFinished?: () => void,
+  voiceOptions?: SpeechVoiceOptions
 ): number {
 
   const task: SpeechTask = {
@@ -128,6 +135,8 @@ export function enqueueSpeech(
 
     onFinished,
 
+    voiceOptions,
+
   };
 
   queue.push(task);
@@ -136,6 +145,28 @@ export function enqueueSpeech(
 
   return task.id;
 
+}
+
+
+/**
+ * Speak with the currently selected recruiter voice.
+ * The task carries its own voice profile so changing recruiter cannot reuse
+ * a previously cached male/female voice.
+ */
+export function enqueueRecruiterSpeech(
+  text: string,
+  recruiter: RecruiterProfile,
+  onFinished?: () => void
+): number {
+  return enqueueSpeech(text, onFinished, {
+    lang: recruiter.voiceLang,
+    voicePattern: recruiter.voicePattern,
+    gender: recruiter.voiceGender,
+    rate: recruiter.rate,
+    pitch: recruiter.pitch,
+    volume: 1,
+    label: `${recruiter.name} (${recruiter.accent})`,
+  });
 }
 
 /**

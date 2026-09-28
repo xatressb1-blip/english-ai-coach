@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useInterviewContext } from "@/context/InterviewContext";
-import { enqueueSpeech } from "@/services/speechQueueService";
+import { enqueueRecruiterSpeech } from "@/services/speechQueueService";
+import RecruiterAvatar from "./RecruiterAvatar";
+import SceneBackdrop from "./SceneBackdrop";
 
 interface Props {
   onBegin: () => void;
@@ -18,33 +20,32 @@ export default function InterviewOpening({ onBegin }: Props) {
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    enqueueSpeech(greeting, () => setSpeaking(false));
+    enqueueRecruiterSpeech(greeting, selectedRecruiter, () => setSpeaking(false));
   }, [greeting]);
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-700 bg-slate-950 text-white shadow-2xl">
-      <div className="relative overflow-hidden px-5 py-8 sm:px-10 sm:py-12">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,.30),transparent_42%),linear-gradient(135deg,#020617,#0f172a_55%,#172554)]" />
-        <div className="relative mx-auto max-w-3xl text-center">
-          <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">
-            Interview briefing
+      <SceneBackdrop scene="room" overlay="dark" className="px-5 py-8 sm:px-10 sm:py-12">
+        <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-flex rounded-full border border-white/15 bg-slate-950/35 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100 backdrop-blur">
+            Interview Room • Briefing
           </span>
 
-          <div className={`mx-auto mt-6 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/10 bg-gradient-to-br ${selectedRecruiter.gradient} text-5xl shadow-2xl transition sm:h-32 sm:w-32 sm:text-7xl ${speaking ? "ring-8 ring-blue-400/20" : ""}`}>
-            {selectedRecruiter.emoji}
+          <div className="mt-6 flex justify-center">
+            <RecruiterAvatar recruiter={selectedRecruiter} state={speaking ? "speaking" : "idle"} size="xl" priority showStatusDot showWaveform />
           </div>
 
           <h1 className="mt-5 text-2xl font-bold sm:text-4xl">Welcome, {candidateName}</h1>
-          <p className="mt-2 text-sm text-blue-200 sm:text-base">{selectedRecruiter.name} • {selectedRecruiter.title}</p>
+          <p className="mt-2 text-sm text-blue-100 sm:text-base">{selectedRecruiter.name} • {selectedRecruiter.title}</p>
 
-          <div className="mt-6 rounded-2xl border border-white/15 bg-white/10 p-5 text-left text-sm leading-7 text-slate-200 backdrop-blur sm:p-7 sm:text-base">
+          <div className="mt-6 rounded-2xl border border-white/15 bg-slate-950/50 p-5 text-left text-sm leading-7 text-slate-100 backdrop-blur-md sm:p-7 sm:text-base">
             <p>{greeting}</p>
           </div>
 
-          <div className="mt-5 grid gap-3 text-left text-sm text-slate-200 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4"><strong className="block text-white">Company</strong>{selectedCompany.name}</div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4"><strong className="block text-white">Position</strong>{selectedJobRole.title}</div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4"><strong className="block text-white">Format</strong>{totalQuestions} questions</div>
+          <div className="mt-5 grid gap-3 text-left text-sm text-slate-100 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur"><strong className="block text-white">Company</strong>{selectedCompany.name}</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur"><strong className="block text-white">Position</strong>{selectedJobRole.title}</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur"><strong className="block text-white">Format</strong>{totalQuestions} questions</div>
           </div>
 
           <button
@@ -56,7 +57,7 @@ export default function InterviewOpening({ onBegin }: Props) {
             {speaking ? "Recruiter is speaking..." : "Begin Interview"}
           </button>
         </div>
-      </div>
+      </SceneBackdrop>
     </section>
   );
 }

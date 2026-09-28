@@ -2,6 +2,7 @@
 
 import { companies } from "@/data/interviewProfiles";
 import { useInterviewContext } from "@/context/InterviewContext";
+import SceneBackdrop from "./SceneBackdrop";
 
 interface Props { onContinue: () => void; }
 
@@ -15,11 +16,11 @@ export default function InterviewPositionSetup({ onContinue }: Props) {
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
-      <div className="bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 px-5 py-8 text-white sm:px-9 sm:py-10">
-        <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">Interview application</span>
+      <SceneBackdrop scene="corridor" overlay="dark" className="px-5 py-8 text-white sm:px-9 sm:py-10">
+        <span className="inline-flex rounded-full border border-white/20 bg-slate-950/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100 backdrop-blur">Interview application • Company floor</span>
         <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">Choose the company and position you are applying for.</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">Your recruiter will use this context during the interview and include it in the final report.</p>
-      </div>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-100 sm:text-base">Your recruiter will use this context during the interview and include it in the final report.</p>
+      </SceneBackdrop>
 
       <div className="space-y-7 p-4 sm:p-7 lg:p-9">
         <div>

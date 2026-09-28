@@ -5,6 +5,7 @@ import { interviewQuestions } from "@/data/interviewQuestions";
 import { InterviewQuestion } from "@/types/InterviewQuestion";
 import { InterviewAttempt, TrainingLevel } from "@/types/interviewReport";
 import { InterviewFlow, InterviewState, getInitialFlow, readyInterview, startInterview } from "@/services/interviewFlowService";
+import { resetBackgroundEvaluationQueue } from "@/services/backgroundEvaluationQueue";
 import { defaultRecruiter, getRecruiterById, RecruiterProfile } from "@/data/recruiters";
 import { CompanyProfile, defaultCompany, defaultJobRole, getCompanyById, getJobRoleById, JobRoleProfile } from "@/data/interviewProfiles";
 import { CandidateQuestionResult } from "@/types/candidateQuestion";
@@ -37,6 +38,7 @@ interface InterviewContextType {
   setCandidateQuestion: (result: CandidateQuestionResult | null) => void;
   startQuestion: () => void;
   nextQuestion: () => void;
+  nextQuestionAutoStart: () => void;
   previousQuestion: () => void;
   finishInterview: () => void;
   resetInterview: () => void;
@@ -114,14 +116,19 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setInterviewFinished(false);
     setAttempts([]);
     setCandidateQuestion(null);
+    resetBackgroundEvaluationQueue();
     setFlow(getInitialFlow());
   };
 
   const saveAttempt = (attempt: InterviewAttempt) => {
-    setAttempts((previous) => [
-      ...previous.filter((item) => item.questionId !== attempt.questionId),
-      attempt,
-    ]);
+    setAttempts((previous) => {
+      const existingIndex = previous.findIndex((item) => item.questionId === attempt.questionId);
+      if (existingIndex === -1) return [...previous, attempt];
+
+      const next = [...previous];
+      next[existingIndex] = attempt;
+      return next;
+    });
   };
 
   const finishInterview = () => {
@@ -134,6 +141,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setInterviewFinished(false);
     setAttempts([]);
     setCandidateQuestion(null);
+    resetBackgroundEvaluationQueue();
     setFlow(getInitialFlow());
   };
 
@@ -145,6 +153,12 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     setFlow(readyInterview());
   };
 
+  const nextQuestionAutoStart = () => {
+    if (isLastQuestion) return finishInterview();
+    setCurrentQuestionIndex((previous) => previous + 1);
+    setFlow(startInterview());
+  };
+
   const previousQuestion = () => {
     setCurrentQuestionIndex((previous) => Math.max(previous - 1, 0));
     setFlow(readyInterview());
@@ -154,7 +168,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     <InterviewContext.Provider value={{
       candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole, setSelectedCompanyId, setSelectedJobRoleId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
-      interviewFinished, flow, setFlow, attempts, saveAttempt, candidateQuestion, setCandidateQuestion, startQuestion, nextQuestion,
+      interviewFinished, flow, setFlow, attempts, saveAttempt, candidateQuestion, setCandidateQuestion, startQuestion, nextQuestion, nextQuestionAutoStart,
       previousQuestion, finishInterview, resetInterview,
     }}>
       {children}

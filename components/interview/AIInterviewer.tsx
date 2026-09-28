@@ -32,7 +32,7 @@ import { useEffect, useRef } from "react";
 import { useInterviewContext } from "@/context/InterviewContext";
 
 import {
-  enqueueSpeech,
+  enqueueRecruiterSpeech,
 } from "@/services/speechQueueService";
 
 import {
@@ -44,6 +44,7 @@ export default function AIInterviewer() {
 
   const {
     currentQuestion,
+    selectedRecruiter,
     flow,
     setFlow,
   } = useInterviewContext();
@@ -90,9 +91,11 @@ export default function AIInterviewer() {
       currentQuestion.title
     );
 
-    enqueueSpeech(
+    enqueueRecruiterSpeech(
 
       currentQuestion.title,
+
+      selectedRecruiter,
 
       () => {
 
@@ -111,6 +114,8 @@ export default function AIInterviewer() {
   }, [
 
     currentQuestion,
+
+    selectedRecruiter,
 
     flow.state,
 

@@ -26,6 +26,7 @@ interface SpeechRecorderProps {
   compact?: boolean;
   title?: string;
   hideTranscript?: boolean;
+  showClearButton?: boolean;
 }
 
 function isIOSDevice(): boolean {
@@ -72,6 +73,7 @@ export default function SpeechRecorder({
   compact = false,
   title = "Speaking Practice",
   hideTranscript = false,
+  showClearButton = true,
 }: SpeechRecorderProps) {
   const [mode, setMode] = useState<RecorderMode>("checking");
   const [speechError, setSpeechError] = useState("");
@@ -599,14 +601,16 @@ export default function SpeechRecorder({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={handleClearTranscript}
-          disabled={status === "recording" || status === "processing"}
-          className="w-full rounded-2xl bg-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-        >
-          🗑 Clear
-        </button>
+        {showClearButton && (
+          <button
+            type="button"
+            onClick={handleClearTranscript}
+            disabled={status === "recording" || status === "processing"}
+            className="w-full rounded-2xl bg-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+          >
+            🗑 Clear
+          </button>
+        )}
       </div>
 
       <div className="mt-6">

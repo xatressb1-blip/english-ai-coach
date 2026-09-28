@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SpeechRecorder from "@/components/SpeechRecorder";
 import { useInterviewContext } from "@/context/InterviewContext";
 import { useSpeechContext } from "@/context/SpeechContext";
-import { enqueueSpeech } from "@/services/speechQueueService";
+import { enqueueRecruiterSpeech } from "@/services/speechQueueService";
 import { CandidateQuestionResult, CandidateQuestionRating } from "@/types/candidateQuestion";
+import RecruiterAvatar from "./RecruiterAvatar";
+import SceneBackdrop from "./SceneBackdrop";
 
 interface Props {
   onComplete: () => void;
@@ -60,7 +62,7 @@ export default function CandidateQuestion({ onComplete }: Props) {
     resetSpeech();
     if (startedRef.current) return;
     startedRef.current = true;
-    enqueueSpeech(recruiterPrompt, () => setStage("answering"));
+    enqueueRecruiterSpeech(recruiterPrompt, selectedRecruiter, () => setStage("answering"));
     // Run once for this closing-stage prompt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recruiterPrompt]);
@@ -73,7 +75,7 @@ export default function CandidateQuestion({ onComplete }: Props) {
     setResponseText(spokenResponse);
     setStage("responding");
     resetSpeech();
-    enqueueSpeech(spokenResponse, onComplete);
+    enqueueRecruiterSpeech(spokenResponse, selectedRecruiter, onComplete);
   };
 
   const submitQuestion = () => {
@@ -106,28 +108,27 @@ export default function CandidateQuestion({ onComplete }: Props) {
     );
   };
 
+  const avatarState = stage === "answering" ? "listening" : "speaking";
+
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-700 bg-slate-950 text-white shadow-2xl">
-      <div className="relative overflow-hidden px-4 py-7 sm:px-8 sm:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,.22),transparent_42%),linear-gradient(135deg,#020617,#0f172a_55%,#172554)]" />
-        <div className="relative mx-auto max-w-3xl">
+      <SceneBackdrop scene="room" overlay="dark" className="px-4 py-7 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-3xl">
           <div className="flex items-center gap-4">
-            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${selectedRecruiter.gradient} text-3xl shadow-xl sm:h-20 sm:w-20 sm:text-4xl`}>
-              {selectedRecruiter.emoji}
-            </div>
+            <RecruiterAvatar recruiter={selectedRecruiter} state={avatarState} size="md" priority showStatusDot showWaveform />
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">Final interview stage</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Final interview stage</p>
               <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Your question for the recruiter</h1>
-              <p className="mt-1 text-sm text-slate-300">This does not count as an additional scored interview question.</p>
+              <p className="mt-1 text-sm text-slate-200">This does not count as an additional scored interview question.</p>
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/15 bg-white/10 p-5 text-base leading-7 text-slate-100 backdrop-blur sm:p-6 sm:text-lg">
+          <div className="mt-6 rounded-2xl border border-white/15 bg-slate-950/50 p-5 text-base leading-7 text-slate-100 backdrop-blur-md sm:p-6 sm:text-lg">
             {recruiterPrompt}
           </div>
 
           {stage === "asking" && (
-            <div className="mt-5 rounded-xl bg-blue-500/15 p-4 text-sm text-blue-100">Recruiter is speaking. Please listen before recording your question.</div>
+            <div className="mt-5 rounded-xl bg-blue-500/20 p-4 text-sm text-blue-50 backdrop-blur">Recruiter is speaking. Please listen before recording your question.</div>
           )}
 
           {stage === "answering" && (
@@ -146,14 +147,14 @@ export default function CandidateQuestion({ onComplete }: Props) {
           )}
 
           {stage === "responding" && (
-            <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-5 text-sm leading-7 text-emerald-50">
+            <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-slate-950/55 p-5 text-sm leading-7 text-emerald-50 backdrop-blur-md">
               <p className="font-bold">Recruiter response</p>
               <p className="mt-2">{responseText}</p>
               <p className="mt-3 text-emerald-200">The interview will close automatically after the recruiter finishes speaking.</p>
             </div>
           )}
         </div>
-      </div>
+      </SceneBackdrop>
     </section>
   );
 }

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { recruiters } from "@/data/recruiters";
 import { useInterviewContext } from "@/context/InterviewContext";
+import RecruiterAvatar from "./RecruiterAvatar";
+import SceneBackdrop from "./SceneBackdrop";
 
 interface Props {
   candidateName: string;
@@ -50,35 +52,32 @@ export default function VirtualInterviewLobby({ candidateName, totalQuestions, o
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-4 py-8 text-white sm:px-8 sm:py-10 lg:px-12">
-        <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,rgba(255,255,255,.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,.1)_1px,transparent_1px)] [background-size:32px_32px]" />
-        <div className="relative">
-          <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100">Virtual Recruiter Interview Room</span>
-          <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">Choose the recruiter who will guide your interview.</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">You are interviewing for <strong>{selectedJobRole.title}</strong> at <strong>{selectedCompany.name}</strong>. Choose the recruiter who will conduct the session.</p>
+      <SceneBackdrop scene="lobby" overlay="dark" className="px-4 py-8 text-white sm:px-8 sm:py-10 lg:px-12">
+        <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-100 backdrop-blur">Virtual Recruiter Interview Lobby</span>
+        <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">Choose the recruiter who will meet you in the interview room.</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-100 sm:text-base">You are interviewing for <strong>{selectedJobRole.title}</strong> at <strong>{selectedCompany.name}</strong>. Choose the recruiter who will conduct the session.</p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {recruiters.map((recruiter) => {
-              const active = recruiter.id === selectedRecruiter.id;
-              return (
-                <button key={recruiter.id} type="button" onClick={() => setSelectedRecruiterId(recruiter.id)} aria-pressed={active}
-                  className={`min-h-44 rounded-2xl border p-4 text-left transition active:scale-[.98] ${active ? "border-blue-300 bg-white text-slate-900 shadow-xl ring-4 ring-blue-400/20" : "border-white/15 bg-white/10 text-white hover:bg-white/15"}`}>
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${recruiter.gradient} text-3xl shadow-lg`}>{recruiter.emoji}</div>
-                  <p className="mt-3 font-bold">{recruiter.name}</p>
-                  <p className={`mt-1 text-xs ${active ? "text-blue-700" : "text-blue-100"}`}>{recruiter.title}</p>
-                  <p className={`mt-3 text-xs leading-5 ${active ? "text-slate-600" : "text-slate-300"}`}>{recruiter.style}</p>
-                  <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${active ? "bg-blue-100 text-blue-700" : "bg-white/10 text-blue-100"}`}>{active ? "✓ Selected" : recruiter.accent}</span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {recruiters.map((recruiter) => {
+            const active = recruiter.id === selectedRecruiter.id;
+            return (
+              <button key={recruiter.id} type="button" onClick={() => setSelectedRecruiterId(recruiter.id)} aria-pressed={active}
+                className={`min-h-48 rounded-2xl border p-4 text-left backdrop-blur-md transition active:scale-[.98] ${active ? "border-blue-300 bg-white text-slate-900 shadow-xl ring-4 ring-blue-400/20" : "border-white/20 bg-slate-950/45 text-white hover:bg-slate-950/55"}`}>
+                <RecruiterAvatar recruiter={recruiter} state="idle" size="sm" priority={active} />
+                <p className="mt-3 font-bold">{recruiter.name}</p>
+                <p className={`mt-1 text-xs ${active ? "text-blue-700" : "text-blue-100"}`}>{recruiter.title}</p>
+                <p className={`mt-3 text-xs leading-5 ${active ? "text-slate-600" : "text-slate-200"}`}>{recruiter.style}</p>
+                <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${active ? "bg-blue-100 text-blue-700" : "bg-white/10 text-blue-100"}`}>{active ? "✓ Selected" : recruiter.accent}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </SceneBackdrop>
 
       <div className="grid gap-5 p-4 sm:p-7 lg:grid-cols-[.9fr_1.1fr] lg:p-9">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center gap-3">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${selectedRecruiter.gradient} text-3xl`}>{selectedRecruiter.emoji}</div>
+            <RecruiterAvatar recruiter={selectedRecruiter} state="idle" size="sm" showStatusDot />
             <div><h2 className="font-bold text-slate-900">{selectedRecruiter.name}</h2><p className="text-xs text-slate-500">{selectedRecruiter.accent} • {totalQuestions} questions</p></div>
           </div>
           <div className="mt-4 rounded-xl border border-blue-100 bg-white p-4 text-sm leading-6 text-slate-600"><p className="font-bold text-slate-900">{selectedJobRole.title}</p><p className="text-xs text-blue-700">{selectedCompany.name} • {selectedJobRole.department}</p><p className="mt-3">“Hello {candidateName}. Thank you for applying to {selectedCompany.name}. I will be interviewing you for the {selectedJobRole.title} position. Take a breath and answer naturally.”</p></div>

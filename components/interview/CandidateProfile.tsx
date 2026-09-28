@@ -1,7 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useInterviewContext } from "@/context/InterviewContext";
+import RecruiterAvatar from "./RecruiterAvatar";
+import SceneBackdrop from "./SceneBackdrop";
+import { clearSpeechQueue, enqueueRecruiterSpeech } from "@/services/speechQueueService";
 
 interface Props {
   onContinue: () => void;
@@ -10,72 +13,73 @@ interface Props {
 const buildGreeting = (name: string) =>
   `Hello ${name}. Welcome to your interview practice. Take a slow breath, sit comfortably, and remember that you do not need to be perfect. Speak clearly, answer one idea at a time, and use your own experience. I am here to help you build confidence before your real interview.`;
 
-const waveformBars = [
-  20, 34, 48, 28, 58, 40, 66, 32, 52, 72, 44, 62, 30, 54, 38, 68, 46, 26,
-];
+const waveformBars = [30, 56, 42, 72, 50, 82, 46, 68, 38, 76, 48, 62, 34, 58];
 
-function SpeakingWaveform({ active }: { active: boolean }) {
+function VoiceStatus({
+  active,
+  recruiterName,
+}: {
+  active: boolean;
+  recruiterName: string;
+}) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border px-4 py-4 transition-all duration-300 ${
+      className={`rounded-xl border px-3 py-3 transition-colors sm:px-4 ${
         active
-          ? "border-emerald-300 bg-gradient-to-r from-emerald-50 via-cyan-50 to-blue-50 shadow-[0_12px_35px_rgba(16,185,129,0.14)]"
+          ? "border-emerald-200 bg-emerald-50"
           : "border-slate-200 bg-slate-50"
       }`}
       aria-live="polite"
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg ${
-              active
-                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
-                : "bg-slate-200 text-slate-500"
-            }`}
-          >
-            {active && (
-              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-25" />
-            )}
-            <span className="relative">🔊</span>
-          </span>
+      <div className="flex items-center gap-3">
+        <span
+          className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${
+            active
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "bg-slate-200 text-slate-600"
+          }`}
+          aria-hidden="true"
+        >
+          {active && (
+            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-20" />
+          )}
+          <span className="relative">🔊</span>
+        </span>
 
-          <div className="min-w-0">
-            <p className={`font-bold ${active ? "text-emerald-900" : "text-slate-700"}`}>
-              {active ? "Ms. Emma is speaking" : "Recruiter voice ready"}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <p className={`truncate text-sm font-bold ${active ? "text-emerald-900" : "text-slate-700"}`}>
+              {active ? `${recruiterName} is speaking` : "Recruiter voice ready"}
             </p>
-            <p className="truncate text-xs text-slate-500">
-              {active ? "Listen, breathe slowly, and get ready with confidence." : "Your personal greeting will play here."}
-            </p>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                active
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              {active ? "Speaking" : "Ready"}
+            </span>
+          </div>
+
+          <div className="mt-2 flex h-7 items-center gap-1" aria-hidden="true">
+            {waveformBars.map((height, index) => (
+              <span
+                key={`${height}-${index}`}
+                className={`w-1 flex-1 rounded-full ${
+                  active
+                    ? "animate-[candidateWave_850ms_ease-in-out_infinite] bg-emerald-500"
+                    : "bg-slate-300"
+                }`}
+                style={{
+                  maxWidth: "5px",
+                  height: active ? `${height}%` : "22%",
+                  animationDelay: `${index * 52}ms`,
+                }}
+              />
+            ))}
           </div>
         </div>
-
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-            active
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-slate-200 text-slate-500"
-          }`}
-        >
-          {active ? "Speaking" : "Ready"}
-        </span>
-      </div>
-
-      <div className="mt-4 flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
-        {waveformBars.map((height, index) => (
-          <span
-            key={`${height}-${index}`}
-            className={`w-1.5 rounded-full transition-colors duration-300 ${
-              active
-                ? "animate-[candidateWave_900ms_ease-in-out_infinite] bg-gradient-to-t from-blue-500 to-emerald-400"
-                : "bg-slate-300"
-            }`}
-            style={{
-              height: active ? `${height}%` : "18%",
-              animationDelay: `${index * 55}ms`,
-              animationDuration: `${760 + (index % 5) * 90}ms`,
-            }}
-          />
-        ))}
       </div>
 
       <style jsx>{`
@@ -102,12 +106,11 @@ function SpeakingWaveform({ active }: { active: boolean }) {
 }
 
 export default function CandidateProfile({ onContinue }: Props) {
-  const { candidateName, setCandidateName } = useInterviewContext();
+  const { candidateName, setCandidateName, selectedRecruiter } = useInterviewContext();
   const [nameInput, setNameInput] = useState(candidateName);
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmed, setConfirmed] = useState(Boolean(candidateName));
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceMessage, setVoiceMessage] = useState("");
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     setNameInput(candidateName);
@@ -115,25 +118,15 @@ export default function CandidateProfile({ onContinue }: Props) {
 
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      clearSpeechQueue();
     };
   }, []);
 
-  const selectEnglishVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-
-    return (
-      voices.find((voice) =>
-        /samantha|ava|serena|zira|google us english|microsoft aria|microsoft jenny/i.test(
-          voice.name
-        )
-      ) ??
-      voices.find((voice) => /^en-(US|GB|AU|CA)/i.test(voice.lang)) ??
-      voices.find((voice) => /^en/i.test(voice.lang))
-    );
-  };
+  const normalizedName = nameInput.trim().replace(/\s+/g, " ");
+  const greetingText = useMemo(
+    () => buildGreeting(confirmed && candidateName ? candidateName : normalizedName || "Candidate"),
+    [candidateName, confirmed, normalizedName]
+  );
 
   const speakGreeting = (name: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -141,42 +134,19 @@ export default function CandidateProfile({ onContinue }: Props) {
       return;
     }
 
-    window.speechSynthesis.cancel();
+    clearSpeechQueue();
     setVoiceMessage("");
+    setIsSpeaking(true);
 
-    const utterance = new SpeechSynthesisUtterance(buildGreeting(name));
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    utterance.pitch = 1.02;
-    utterance.volume = 1;
-
-    const preferredVoice = selectEnglishVoice();
-    if (preferredVoice) utterance.voice = preferredVoice;
-
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setVoiceMessage("");
-    };
-
-    utterance.onend = () => {
+    const exactGreeting = buildGreeting(name);
+    enqueueRecruiterSpeech(exactGreeting, selectedRecruiter, () => {
       setIsSpeaking(false);
-      setVoiceMessage("Greeting completed. You are ready to choose your interview level.");
-    };
-
-    utterance.onerror = (event) => {
-      setIsSpeaking(false);
-      if (event.error !== "canceled" && event.error !== "interrupted") {
-        setVoiceMessage("The greeting could not be played. Tap Listen Again to retry.");
-      }
-    };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+      setVoiceMessage("Greeting completed. You can continue when you are ready.");
+    });
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedName = nameInput.trim().replace(/\s+/g, " ");
     if (!normalizedName) return;
 
     setCandidateName(normalizedName);
@@ -185,117 +155,160 @@ export default function CandidateProfile({ onContinue }: Props) {
   };
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
-      <div className="bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 px-6 py-10 text-white sm:px-10 lg:px-14">
-        <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
-          Candidate Profile
-        </span>
-        <h1 className="mt-5 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">
-          Let the virtual recruiter know who is joining the interview.
-        </h1>
-        <p className="mt-4 max-w-2xl leading-7 text-slate-200">
-          Your name will be used in the recruiter greeting and saved with your Final Recruiter Report.
-        </p>
-      </div>
-
-      <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[.9fr_1.1fr] lg:p-10">
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-          <label htmlFor="candidate-name" className="text-sm font-bold uppercase tracking-wide text-slate-600">
-            Candidate name
-          </label>
-          <input
-            id="candidate-name"
-            type="text"
-            value={nameInput}
-            onChange={(event) => {
-              setNameInput(event.target.value);
-              setConfirmed(false);
-              setIsSpeaking(false);
-              setVoiceMessage("");
-              if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                window.speechSynthesis.cancel();
-              }
-            }}
-            placeholder="Example: Chung"
-            maxLength={60}
-            autoComplete="name"
-            className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-lg text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-          <p className="mt-3 text-sm leading-6 text-slate-500">
-            Enter the name you want the recruiter to use during this interview.
-          </p>
-          <button
-            type="submit"
-            disabled={!nameInput.trim() || isSpeaking}
-            className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSpeaking ? "Recruiter Is Greeting You..." : "Confirm Name and Meet Recruiter"}
-          </button>
-        </form>
-
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
-          <div className="flex items-start gap-4">
-            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-700 text-3xl shadow-lg ${isSpeaking ? "ring-4 ring-emerald-200" : ""}`}>
-              👩‍💼
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+      <SceneBackdrop
+        scene="lobby"
+        overlay="dark"
+        className="px-4 py-5 text-white sm:px-6 sm:py-6 lg:px-8"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-blue-100 sm:text-xs">
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur">
+                Step 1 of 4
+              </span>
+              <span>Candidate check-in</span>
             </div>
-            <div>
-              <p className="font-bold text-slate-900">Ms. Emma</p>
-              <p className="text-sm text-blue-700">AI Talent Acquisition Specialist</p>
-            </div>
+            <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-3xl">
+              Meet your virtual recruiter
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-100 sm:text-base">
+              Enter your name, listen to the recruiter greeting, then continue to interview setup.
+            </p>
           </div>
+          <div className="hidden rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-right text-xs text-blue-100 backdrop-blur lg:block">
+            <p className="font-bold text-white">Corporate interview simulation</p>
+            <p>Voice • recruiter • guided setup</p>
+          </div>
+        </div>
+      </SceneBackdrop>
 
-          <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-5 text-sm leading-7 text-slate-700">
-            {confirmed && candidateName ? (
-              <>
-                <p className="text-lg font-bold text-blue-900">Hello {candidateName}!</p>
-                <p className="mt-3">
-                  Take a slow breath and sit comfortably. You do not need to be perfect. Speak clearly, answer one idea at a time, and use your own experience. This practice is here to help you become more confident before meeting a real recruiter.
+      <div className="p-4 sm:p-5 lg:p-6">
+        <div className="grid gap-4 lg:grid-cols-[0.82fr_1.18fr]">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-700">
+                  Candidate
                 </p>
-              </>
-            ) : (
-              <p>
-                After you confirm your name, I will greet you personally and share a few simple reminders to help you feel calm and confident.
-              </p>
+                <h2 className="mt-1 text-lg font-bold text-slate-950">Your interview name</h2>
+              </div>
+              {confirmed && candidateName && (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                  Confirmed
+                </span>
+              )}
+            </div>
+
+            <label htmlFor="candidate-name" className="sr-only">
+              Candidate name
+            </label>
+            <input
+              id="candidate-name"
+              type="text"
+              value={nameInput}
+              onChange={(event) => {
+                setNameInput(event.target.value);
+                setConfirmed(false);
+                setIsSpeaking(false);
+                setVoiceMessage("");
+                clearSpeechQueue();
+              }}
+              placeholder="Example: Chung"
+              maxLength={60}
+              autoComplete="name"
+              className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-medium text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              This name is used in the spoken greeting and final recruiter report.
+            </p>
+
+            {!confirmed && (
+              <button
+                type="submit"
+                disabled={!normalizedName || isSpeaking}
+                className="mt-4 min-h-12 w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Confirm & Play Greeting
+              </button>
+            )}
+
+            {confirmed && (
+              <div className="mt-4 rounded-xl border border-blue-100 bg-white px-4 py-3 text-xs leading-5 text-slate-600">
+                <strong className="text-slate-900">Next:</strong> listen once, replay only if needed, then continue to choose your interview level.
+              </div>
+            )}
+          </form>
+
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <RecruiterAvatar
+                recruiter={selectedRecruiter}
+                state="idle"
+                size="md"
+                priority
+                showStatusDot
+              />
+              <div className="min-w-0">
+                <p className="truncate text-lg font-bold text-slate-950">{selectedRecruiter.name}</p>
+                <p className="truncate text-sm font-medium text-blue-700">AI {selectedRecruiter.title}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{selectedRecruiter.accent}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-blue-200 bg-white px-4 py-3.5 text-sm leading-6 text-slate-700">
+              {confirmed && candidateName ? (
+                <>
+                  <p className="mb-1 font-bold text-blue-900">Spoken greeting</p>
+                  <p>{greetingText}</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-blue-900">Your greeting will appear here.</p>
+                  <p className="mt-1 text-slate-600">
+                    The text shown in this panel will be exactly the same text spoken by the recruiter.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <VoiceStatus active={isSpeaking} recruiterName={selectedRecruiter.name} />
+            </div>
+
+            {voiceMessage && (
+              <p className="mt-2 text-xs font-medium text-slate-500">{voiceMessage}</p>
             )}
           </div>
-
-          <div className="mt-5">
-            <SpeakingWaveform active={isSpeaking} />
-          </div>
-
-          {voiceMessage && (
-            <p className="mt-3 rounded-xl bg-white px-4 py-3 text-sm font-medium text-slate-600">
-              {voiceMessage}
-            </p>
-          )}
-
-          {confirmed && (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => speakGreeting(candidateName)}
-                disabled={isSpeaking}
-                className="rounded-xl border border-blue-300 bg-white px-5 py-4 font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-wait disabled:opacity-60"
-              >
-                {isSpeaking ? "Speaking..." : "🔊 Listen Again"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                    window.speechSynthesis.cancel();
-                  }
-                  setIsSpeaking(false);
-                  onContinue();
-                }}
-                className="rounded-xl bg-slate-900 px-5 py-4 font-bold text-white transition hover:bg-slate-800"
-              >
-                Choose Interview Level →
-              </button>
-            </div>
-          )}
         </div>
+
+        {confirmed && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:ml-auto lg:max-w-xl">
+            <button
+              type="button"
+              onClick={() => speakGreeting(candidateName)}
+              disabled={isSpeaking}
+              className="min-h-12 rounded-xl border border-blue-300 bg-white px-5 py-3 font-bold text-blue-700 transition hover:bg-blue-50 active:scale-[.99] disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSpeaking ? "Recruiter Speaking..." : "🔊 Listen Again"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                clearSpeechQueue();
+                setIsSpeaking(false);
+                onContinue();
+              }}
+              className="min-h-12 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-[.99]"
+            >
+              Continue to Interview Level →
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

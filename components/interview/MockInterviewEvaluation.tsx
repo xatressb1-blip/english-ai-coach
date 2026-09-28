@@ -5,11 +5,14 @@ import { useEvaluation } from "@/hooks/useEvaluation";
 import { useSpeechContext } from "@/context/SpeechContext";
 import { useEvaluationContext } from "@/context/EvaluationContext";
 import { useInterviewContext } from "@/context/InterviewContext";
-import { enqueueSpeech } from "@/services/speechQueueService";
+import { useHistoryContext } from "@/context/HistoryContext";
+import { enqueueRecruiterSpeech } from "@/services/speechQueueService";
 import { requestFollowUp } from "@/services/followUpService";
 import { SpeechMetrics } from "@/types/speechMetrics";
 import { buildUnavailableEvaluation } from "@/services/evaluationService";
 import { buildBackupRubricEvaluation } from "@/services/backupRubricEvaluation";
+import RecruiterAvatar from "./RecruiterAvatar";
+import { enqueueBackgroundEvaluation } from "@/services/backgroundEvaluationQueue";
 
 type InterviewStep =
   | "main-answer"
@@ -21,6 +24,7 @@ type InterviewStep =
 export default function MockInterviewEvaluation() {
   const { transcript, setTranscript, status, speechMetrics } = useSpeechContext();
   const { result, loading, error, errorCode, errorRetryable, evaluate } = useEvaluation();
+  const { addHistory } = useHistoryContext();
   const {
     resetEvaluation,
     setResult,
@@ -37,6 +41,7 @@ export default function MockInterviewEvaluation() {
     currentQuestionIndex,
     isLastQuestion,
     nextQuestion,
+    nextQuestionAutoStart,
     finishInterview,
     saveAttempt,
   } = useInterviewContext();
@@ -53,11 +58,18 @@ export default function MockInterviewEvaluation() {
 
   const hasAnswer = transcript.trim().length > 0;
   const recorderBusy = status === "recording" || status === "processing";
-  const canSubmitMain = step === "main-answer" && hasAnswer && !recorderBusy && !loading;
+  const isPresentationQuestion = currentQuestion.id >= 1 && currentQuestion.id <= 3;
+  const canSubmitMain = step === "main-answer" && hasAnswer && !recorderBusy && (isPresentationQuestion || !loading);
   const canSubmitFollowUp = step === "follow-up-answer" && hasAnswer && !recorderBusy;
   const allowFollowUp = currentQuestion.id >= 4;
 
   const acknowledgement = useMemo(() => {
+    if (isPresentationQuestion) {
+      return isLastQuestion
+        ? "Thank you. That concludes the interview questions."
+        : "Thank you. Let us continue to the next question.";
+    }
+
     const regular = [
       "Thank you. That gives me a clear understanding of your answer. Let us continue to the next question.",
       "Thank you for explaining that. I have noted your response. We will now move to the next question.",
@@ -65,7 +77,7 @@ export default function MockInterviewEvaluation() {
     ];
     const ending = `Thank you, ${selectedRecruiter.shortName === "James" ? "that completes" : "that concludes"} the final interview question. I will now prepare your recruiter report.`;
     return isLastQuestion ? ending : regular[currentQuestionIndex % regular.length];
-  }, [currentQuestionIndex, isLastQuestion, selectedRecruiter.shortName]);
+  }, [currentQuestionIndex, isLastQuestion, isPresentationQuestion, selectedRecruiter.shortName]);
 
   useEffect(() => {
     if (!loading) {
@@ -83,11 +95,10 @@ export default function MockInterviewEvaluation() {
   const speakAcknowledgement = () => {
     setStep("acknowledging");
     setAcknowledging(true);
-    enqueueSpeech(acknowledgement, () => setAcknowledging(false));
+    enqueueRecruiterSpeech(acknowledgement, selectedRecruiter, () => setAcknowledging(false));
   };
 
   useEffect(() => {
-    const isPresentationQuestion = currentQuestion.id >= 1 && currentQuestion.id <= 3;
     if (!isPresentationQuestion || !error || result || loading || recorderBusy || !hasAnswer || backupTriggeredRef.current) {
       return;
     }
@@ -117,7 +128,8 @@ export default function MockInterviewEvaluation() {
   ]);
 
   useEffect(() => {
-    if (!result || decisionStartedRef.current) return;
+    // Q1-Q3 use the non-blocking background queue and never wait for this shared result state.
+    if (isPresentationQuestion || !result || decisionStartedRef.current) return;
     decisionStartedRef.current = true;
 
     const capturedMainAnswer = transcript.trim();
@@ -165,7 +177,7 @@ export default function MockInterviewEvaluation() {
       setFollowUpQuestion(decision.question);
       setTranscript("");
       setStep("follow-up-speaking");
-      enqueueSpeech(decision.question, () => setStep("follow-up-answer"));
+      enqueueRecruiterSpeech(decision.question, selectedRecruiter, () => setStep("follow-up-answer"));
     });
     // The decision must run exactly once for the submitted answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,9 +231,77 @@ export default function MockInterviewEvaluation() {
   const submitMainAnswer = () => {
     if (!canSubmitMain) return;
 
+    if (isPresentationQuestion) {
+      const capturedQuestion = currentQuestion;
+      const capturedTranscript = transcript.trim();
+      const capturedSpeechMetrics = speechMetrics ?? undefined;
+      const backup = buildBackupRubricEvaluation(
+        capturedQuestion,
+        capturedTranscript,
+        "Live AI analysis is running in the background."
+      );
+
+      // Save immediately so the interview can move on without waiting for Gemini.
+      saveAttempt({
+        questionId: capturedQuestion.id,
+        questionTitle: capturedQuestion.title,
+        transcript: capturedTranscript,
+        evaluation: backup,
+        speechMetrics: capturedSpeechMetrics,
+      });
+
+      // Live AI runs sequentially in the background. When it finishes, it
+      // replaces the provisional Backup Rubric without changing question order.
+      enqueueBackgroundEvaluation({
+        question: capturedQuestion,
+        transcript: capturedTranscript,
+        onSuccess: (evaluation) => {
+          saveAttempt({
+            questionId: capturedQuestion.id,
+            questionTitle: capturedQuestion.title,
+            transcript: capturedTranscript,
+            evaluation,
+            speechMetrics: capturedSpeechMetrics,
+          });
+          addHistory({
+            id: crypto.randomUUID(),
+            questionId: capturedQuestion.id,
+            questionTitle: capturedQuestion.title,
+            transcript: capturedTranscript,
+            evaluation,
+            createdAt: new Date().toISOString(),
+          });
+        },
+        onError: (backgroundError) => {
+          console.warn(
+            `[BackgroundEvaluation] Q${capturedQuestion.id} unavailable; keeping Backup Rubric.`,
+            backgroundError
+          );
+        },
+      });
+
+      setTranscript("");
+      resetEvaluation();
+      setStep("acknowledging");
+      setAcknowledging(true);
+
+      // Keep the recruiter natural but very brief. The next question starts
+      // automatically as soon as this short acknowledgement finishes.
+      enqueueRecruiterSpeech(acknowledgement, selectedRecruiter, () => {
+        setAcknowledging(false);
+        if (isLastQuestion) {
+          finishInterview();
+        } else {
+          nextQuestionAutoStart();
+        }
+      });
+      return;
+    }
+
     setActiveWaitingStarted(true);
-    enqueueSpeech(
-      "Thank you. Your answer has been recorded. While I review it, the observers can complete their notes."
+    enqueueRecruiterSpeech(
+      "Thank you. Your answer has been recorded. While I review it, the observers can complete their notes.",
+      selectedRecruiter
     );
     void evaluate();
   };
@@ -229,8 +309,7 @@ export default function MockInterviewEvaluation() {
   const continueWithTeacherReview = () => {
     if (!hasAnswer || loading || recorderBusy) return;
     const safeTranscript = transcript.trim();
-    const presentationQuestion = currentQuestion.id >= 1 && currentQuestion.id <= 3;
-    const fallback = presentationQuestion
+    const fallback = isPresentationQuestion
       ? buildBackupRubricEvaluation(
           currentQuestion,
           safeTranscript,
@@ -241,7 +320,7 @@ export default function MockInterviewEvaluation() {
           safeTranscript,
           error ?? "AI evaluation unavailable"
         );
-    backupTriggeredRef.current = presentationQuestion;
+    backupTriggeredRef.current = isPresentationQuestion;
     setError(null);
     setErrorCode(null);
     setErrorRetryable(false);
@@ -250,7 +329,7 @@ export default function MockInterviewEvaluation() {
 
   return (
     <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      {!result && (
+      {!result && step === "main-answer" && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Submit your response</h2>
@@ -264,12 +343,12 @@ export default function MockInterviewEvaluation() {
             disabled={!canSubmitMain}
             className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
-            {loading ? "AI is evaluating..." : "Submit Answer"}
+            {isPresentationQuestion ? "Save & Continue" : loading ? "AI is evaluating..." : "Submit Answer"}
           </button>
         </div>
       )}
 
-      {(loading || step === "deciding") && (
+      {!isPresentationQuestion && (loading || step === "deciding") && (
         <div className="space-y-4">
           <div className="flex items-center gap-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
             <div className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
@@ -324,7 +403,7 @@ export default function MockInterviewEvaluation() {
         </div>
       )}
 
-      {error && !result && (
+      {!isPresentationQuestion && error && !result && (
         <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <p className="font-bold">Your answer is safe.</p>
           <p className="mt-1">{error}</p>
@@ -361,9 +440,13 @@ export default function MockInterviewEvaluation() {
       {result && (step === "follow-up-speaking" || step === "follow-up-answer") && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
           <div className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${selectedRecruiter.gradient} text-2xl text-white`}>
-              {selectedRecruiter.emoji}
-            </div>
+            <RecruiterAvatar
+              recruiter={selectedRecruiter}
+              state={step === "follow-up-speaking" ? "speaking" : "listening"}
+              size="xs"
+              showStatusDot
+              showWaveform
+            />
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">One follow-up question</p>
               <p className="mt-2 text-lg font-semibold leading-7 text-slate-900">{followUpQuestion}</p>
@@ -388,12 +471,37 @@ export default function MockInterviewEvaluation() {
         </div>
       )}
 
+      {isPresentationQuestion && step === "acknowledging" && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <RecruiterAvatar
+              recruiter={selectedRecruiter}
+              state={acknowledging ? "speaking" : "idle"}
+              size="xs"
+              showStatusDot
+              showWaveform
+            />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Recruiter response</p>
+              <p className="mt-2 leading-7 text-slate-800">{acknowledgement}</p>
+              <p className="mt-2 text-sm font-medium text-blue-700">
+                Live AI analysis continues in the background. The interview does not wait for it.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {result && step === "acknowledging" && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 sm:p-6">
           <div className="flex items-start gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${selectedRecruiter.gradient} text-2xl text-white`}>
-              {selectedRecruiter.emoji}
-            </div>
+            <RecruiterAvatar
+              recruiter={selectedRecruiter}
+              state={acknowledging ? "speaking" : "idle"}
+              size="xs"
+              showStatusDot
+              showWaveform
+            />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Recruiter response</p>
               <p className="mt-2 leading-7 text-slate-800">{acknowledgement}</p>
