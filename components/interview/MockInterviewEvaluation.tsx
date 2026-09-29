@@ -55,6 +55,7 @@ export default function MockInterviewEvaluation() {
   const decisionStartedRef = useRef(false);
   const backupTriggeredRef = useRef(false);
   const mainSpeechMetricsRef = useRef<SpeechMetrics | null>(null);
+  const autoSubmitStartedRef = useRef(false);
 
   const hasAnswer = transcript.trim().length > 0;
   const recorderBusy = status === "recording" || status === "processing";
@@ -65,9 +66,10 @@ export default function MockInterviewEvaluation() {
 
   const acknowledgement = useMemo(() => {
     if (isPresentationQuestion) {
-      return isLastQuestion
-        ? "Thank you. That concludes the interview questions."
-        : "Thank you. Let us continue to the next question.";
+      if (isLastQuestion) return "";
+      return currentQuestionIndex === 0
+        ? "Thank you. Let's move on to the next question."
+        : "Thank you. Let's continue with the final question.";
     }
 
     const regular = [
@@ -193,6 +195,7 @@ export default function MockInterviewEvaluation() {
     decisionStartedRef.current = false;
     backupTriggeredRef.current = false;
     mainSpeechMetricsRef.current = null;
+    autoSubmitStartedRef.current = false;
   }, [currentQuestionIndex]);
 
   const submitFollowUp = () => {
@@ -282,18 +285,20 @@ export default function MockInterviewEvaluation() {
 
       setTranscript("");
       resetEvaluation();
+
+      // Q3 moves directly into the dedicated professional closing screen.
+      // Q1/Q2 use a short recruiter bridge, then the next question is asked
+      // automatically by AIInterviewer. Gemini continues independently.
+      if (isLastQuestion) {
+        finishInterview();
+        return;
+      }
+
       setStep("acknowledging");
       setAcknowledging(true);
-
-      // Keep the recruiter natural but very brief. The next question starts
-      // automatically as soon as this short acknowledgement finishes.
       enqueueRecruiterSpeech(acknowledgement, selectedRecruiter, () => {
         setAcknowledging(false);
-        if (isLastQuestion) {
-          finishInterview();
-        } else {
-          nextQuestionAutoStart();
-        }
+        nextQuestionAutoStart();
       });
       return;
     }
@@ -305,6 +310,28 @@ export default function MockInterviewEvaluation() {
     );
     void evaluate();
   };
+
+  // Fix 43.2: Stop Recording is the submit action for Q1-Q3. Once the
+  // recorder has finalized a non-empty transcript, save a Backup Rubric,
+  // queue Live AI in the background, and let the recruiter carry the flow.
+  // The ref prevents duplicate submission if speech/status callbacks re-render.
+  useEffect(() => {
+    if (
+      !isPresentationQuestion ||
+      step !== "main-answer" ||
+      status !== "finished" ||
+      !hasAnswer ||
+      recorderBusy ||
+      autoSubmitStartedRef.current
+    ) {
+      return;
+    }
+
+    autoSubmitStartedRef.current = true;
+    submitMainAnswer();
+    // submitMainAnswer intentionally uses the captured state from this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, hasAnswer, isPresentationQuestion, recorderBusy, status, step]);
 
   const continueWithTeacherReview = () => {
     if (!hasAnswer || loading || recorderBusy) return;
@@ -332,19 +359,29 @@ export default function MockInterviewEvaluation() {
       {!result && step === "main-answer" && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950 sm:text-xl">Submit your response</h2>
+            <h2 className="text-lg font-bold text-slate-950 sm:text-xl">
+              {isPresentationQuestion ? "Interview response" : "Submit your response"}
+            </h2>
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Your detailed scores remain private until the interview is complete.
+              {isPresentationQuestion
+                ? status === "processing"
+                  ? "Answer captured. Preparing the transcript..."
+                  : status === "finished" && !hasAnswer
+                    ? "No transcript was captured. Please record your answer again."
+                    : "Press Stop Recording when you finish. Your answer will be saved and analyzed automatically."
+                : "Your detailed scores remain private until the interview is complete."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={submitMainAnswer}
-            disabled={!canSubmitMain}
-            className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
-          >
-            {isPresentationQuestion ? "Save & Continue" : loading ? "AI is evaluating..." : "Submit Answer"}
-          </button>
+          {!isPresentationQuestion && (
+            <button
+              type="button"
+              onClick={submitMainAnswer}
+              disabled={!canSubmitMain}
+              className="min-h-12 w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+            >
+              {loading ? "AI is evaluating..." : "Submit Answer"}
+            </button>
+          )}
         </div>
       )}
 

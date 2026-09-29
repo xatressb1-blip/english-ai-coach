@@ -10,7 +10,7 @@ import {
 } from "@/services/interviewReportService";
 import { RecruiterReport } from "@/types/interviewReport";
 import InterviewReview from "./InterviewReview";
-import TeacherProjectionSummary from "./TeacherProjectionSummary";
+import PaperObserverTeacherSummary from "./PaperObserverTeacherSummary";
 
 export default function FinalRecruiterReport() {
   const { attempts, candidateName, selectedLevel, resetInterview, selectedCompany, selectedJobRole, selectedRecruiter, candidateQuestion } = useInterviewContext();
@@ -50,7 +50,7 @@ export default function FinalRecruiterReport() {
     ["Pronunciation", report.scoreBreakdown.pronunciation],
     ["Fluency", report.scoreBreakdown.fluency],
     ["Relevance", report.scoreBreakdown.relevance],
-    ["Confidence", report.scoreBreakdown.confidence],
+    ["Spoken confidence", report.scoreBreakdown.confidence],
   ];
 
   return (
@@ -175,13 +175,10 @@ export default function FinalRecruiterReport() {
       <InterviewReview attempts={attempts} />
 
       <div className="flex flex-col gap-3 border-t border-slate-200 p-6 sm:flex-row sm:justify-center">
-        <TeacherProjectionSummary
+        <PaperObserverTeacherSummary
           attempts={attempts}
           report={report}
           candidateName={candidateName}
-          companyName={selectedCompany.name}
-          jobTitle={selectedJobRole.title}
-          recruiterName={selectedRecruiter.name}
         />
         <button onClick={resetInterview} className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white">Repeat This Level</button>
         <Link href="/history" className="rounded-xl border border-blue-300 px-6 py-3 text-center font-bold text-blue-700">View Practice History</Link>

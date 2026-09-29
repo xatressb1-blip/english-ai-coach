@@ -70,6 +70,7 @@ export default function ClassroomRapidInterview() {
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [nextQuestionCountdown, setNextQuestionCountdown] = useState<number | null>(null);
   const [openingStep, setOpeningStep] = useState<0 | 1>(0);
+  const [openingReplyCountdown, setOpeningReplyCountdown] = useState<number | null>(null);
   const capturedQuestionsRef = useRef<Set<number>>(new Set());
   const autoAdvancedQuestionsRef = useRef<Set<number>>(new Set());
 
@@ -182,10 +183,13 @@ export default function ClassroomRapidInterview() {
     }
   };
 
-  const speakRecruiterLine = (text: string) => {
+  const speakRecruiterLine = (text: string, onFinished?: () => void) => {
     clearSpeechQueue();
     setRecruiterSpeaking(true);
-    enqueueRecruiterSpeech(text, selectedRecruiter, () => setRecruiterSpeaking(false));
+    enqueueRecruiterSpeech(text, selectedRecruiter, () => {
+      setRecruiterSpeaking(false);
+      onFinished?.();
+    });
   };
 
   const speakQuestion = (questionId: number) => {
@@ -211,6 +215,7 @@ export default function ClassroomRapidInterview() {
     setResults([]);
     setNextQuestionCountdown(null);
     setOpeningStep(0);
+    setOpeningReplyCountdown(null);
     capturedQuestionsRef.current.clear();
     autoAdvancedQuestionsRef.current.clear();
 
@@ -253,15 +258,40 @@ export default function ClassroomRapidInterview() {
     setActivityStartedAt(Date.now());
     setNextQuestionCountdown(null);
     setOpeningStep(0);
+    setOpeningReplyCountdown(null);
     autoAdvancedQuestionsRef.current.clear();
     setStage("opening");
     const updated = await updateServerRound(0, "ready");
-    if (updated) speakRecruiterLine(openingLines[0]);
+    if (updated) {
+      speakRecruiterLine(openingLines[0], () => {
+        // No button after Step 1. Give the real candidate a short natural
+        // greeting window, then move to Step 2 automatically.
+        setOpeningReplyCountdown(6);
+      });
+    }
   };
+
+  useEffect(() => {
+    if (stage !== "opening" || openingStep !== 0 || openingReplyCountdown === null) return;
+
+    if (openingReplyCountdown <= 0) {
+      setOpeningReplyCountdown(null);
+      setOpeningStep(1);
+      speakRecruiterLine(openingLines[1]);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setOpeningReplyCountdown((current) => (current === null ? null : current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [stage, openingStep, openingReplyCountdown]);
 
   const advanceOpening = async () => {
     if (!session || recruiterSpeaking) return;
     if (openingStep === 0) {
+      setOpeningReplyCountdown(null);
       setOpeningStep(1);
       speakRecruiterLine(openingLines[1]);
       return;
@@ -389,6 +419,7 @@ export default function ClassroomRapidInterview() {
     setActivityStartedAt(null);
     setNextQuestionCountdown(null);
     setOpeningStep(0);
+    setOpeningReplyCountdown(null);
     capturedQuestionsRef.current.clear();
     autoAdvancedQuestionsRef.current.clear();
     if (!current) return;
@@ -541,8 +572,20 @@ export default function ClassroomRapidInterview() {
         <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-xl sm:p-7">
           {recruiterSpeaking ? (
             <><div className="mx-auto h-3 w-3 animate-pulse rounded-full bg-blue-600" /><p className="mt-3 font-black text-slate-950">Listen to the recruiter</p><p className="mt-1 text-sm text-slate-500">The candidate responds only after the recruiter finishes speaking.</p></>
+          ) : openingStep === 0 ? (
+            <>
+              <p className="text-lg font-black text-slate-950">{candidateName}: greet the recruiter naturally now.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">No button is needed. Step 2 starts automatically after this short response window.</p>
+              <div className="mx-auto mt-5 inline-flex min-w-48 items-center justify-center rounded-xl bg-emerald-50 px-6 py-3 font-black text-emerald-800">
+                Continuing automatically{openingReplyCountdown !== null ? ` in ${openingReplyCountdown}s` : "…"}
+              </div>
+            </>
           ) : (
-            <><p className="text-lg font-black text-slate-950">{candidateName}: respond naturally now.</p><p className="mt-2 text-sm leading-6 text-slate-500">This opening is observed for professional etiquette but is not sent to Gemini and is not scored as Q1.</p><button type="button" onClick={() => void advanceOpening()} className="mt-5 rounded-xl bg-blue-600 px-7 py-4 font-black text-white shadow-lg hover:bg-blue-700">{openingStep === 0 ? "Candidate Responded · Continue →" : "Candidate Ready · Begin Q1 →"}</button></>
+            <>
+              <p className="text-lg font-black text-slate-950">{candidateName}: respond naturally now.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">This opening is observed for professional etiquette but is not sent to Gemini and is not scored as Q1.</p>
+              <button type="button" onClick={() => void advanceOpening()} className="mt-5 rounded-xl bg-blue-600 px-7 py-4 font-black text-white shadow-lg hover:bg-blue-700">Candidate Ready · Begin Q1 →</button>
+            </>
           )}
         </section>
       </div>

@@ -28,12 +28,6 @@ export default function Hero() {
         >
           Enter Mock Interview
         </Link>
-        <Link
-          href="/classroom"
-          className="rounded-xl border border-blue-300 bg-blue-50 px-7 py-4 text-base font-bold text-blue-800 transition hover:bg-blue-100"
-        >
-          Classroom Rapid Mode
-        </Link>
       </div>
     </section>
   );

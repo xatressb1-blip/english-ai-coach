@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useInterviewContext } from "@/context/InterviewContext";
-import { InterviewState, readyInterview } from "@/services/interviewFlowService";
+import { InterviewState } from "@/services/interviewFlowService";
 import InterviewProgress from "./InterviewProgress";
 import InterviewStatusBar from "./InterviewStatusBar";
 import AIInterviewer from "./AIInterviewer";
@@ -12,32 +12,36 @@ import FeedbackButton from "../feedback/FeedbackButton";
 import FeedbackDialog from "../feedback/FeedbackDialog";
 import VirtualInterviewLobby from "./VirtualInterviewLobby";
 import RecruiterStage from "./RecruiterStage";
-import LevelSelection from "./LevelSelection";
 import FinalRecruiterReport from "./FinalRecruiterReport";
 import CandidateProfile from "./CandidateProfile";
 import InterviewPositionSetup from "./InterviewPositionSetup";
 import InterviewOpening from "./InterviewOpening";
 import InterviewClosing from "./InterviewClosing";
 import MockInterviewEvaluation from "./MockInterviewEvaluation";
-import CandidateQuestion from "./CandidateQuestion";
-import InterviewModeSelection from "./InterviewModeSelection";
 
 export default function InterviewEngine() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [modeChosen, setModeChosen] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
-  const [levelChosen, setLevelChosen] = useState(false);
   const [positionChosen, setPositionChosen] = useState(false);
   const [enteredRoom, setEnteredRoom] = useState(false);
   const [briefingCompleted, setBriefingCompleted] = useState(false);
-  const [candidateQuestionCompleted, setCandidateQuestionCompleted] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
-  const { candidateName, currentQuestionIndex, totalQuestions, interviewFinished, flow, setFlow, startQuestion } = useInterviewContext();
+  const {
+    candidateName,
+    currentQuestionIndex,
+    totalQuestions,
+    interviewFinished,
+    flow,
+    startQuestion,
+  } = useInterviewContext();
 
-  if (!modeChosen) return <InterviewModeSelection onIndividual={() => setModeChosen(true)} />;
+  // Fix 43: Mock Interview is now the single teaching-demo entry flow.
+  // Classroom Rapid Mode remains in source for rollback/history, but is not
+  // exposed from the user-facing interview journey.
   if (!profileCompleted) return <CandidateProfile onContinue={() => setProfileCompleted(true)} />;
-  if (!levelChosen) return <LevelSelection onContinue={() => setLevelChosen(true)} />;
+  // Fix 43.1: Teaching Demo always uses Level 1 (basic), so the level
+  // selection screen is intentionally skipped.
   if (!positionChosen) return <InterviewPositionSetup onContinue={() => setPositionChosen(true)} />;
 
   if (!enteredRoom) {
@@ -45,10 +49,20 @@ export default function InterviewEngine() {
   }
 
   if (!briefingCompleted) {
-    return <InterviewOpening onBegin={() => { setBriefingCompleted(true); setFlow(readyInterview()); }} />;
+    return (
+      <InterviewOpening
+        onBegin={() => {
+          setBriefingCompleted(true);
+          // The readiness button is the deliberate boundary before Q1, so Q1
+          // starts immediately instead of showing a second redundant Ready screen.
+          startQuestion();
+        }}
+      />
+    );
   }
 
-  if (interviewFinished && !candidateQuestionCompleted) return <CandidateQuestion onComplete={() => setCandidateQuestionCompleted(true)} />;
+  // Fix 43: after the scored interview questions, go directly to the concise
+  // professional closing. Peer observers give feedback from paper forms.
   if (interviewFinished && !showReport) return <InterviewClosing onViewReport={() => setShowReport(true)} />;
   if (interviewFinished && showReport) return <FinalRecruiterReport />;
 
