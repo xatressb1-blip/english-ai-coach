@@ -13,6 +13,8 @@ import { CandidateQuestionResult } from "@/types/candidateQuestion";
 interface InterviewContextType {
   candidateName: string;
   setCandidateName: (name: string) => void;
+  classSessionCode: string;
+  setClassSessionCode: (code: string) => void;
   selectedRecruiter: RecruiterProfile;
   setSelectedRecruiterId: (id: string) => void;
   selectedCompany: CompanyProfile;
@@ -48,6 +50,7 @@ const InterviewContext = createContext<InterviewContextType | null>(null);
 
 export function InterviewProvider({ children }: { children: ReactNode }) {
   const [candidateName, setCandidateNameState] = useState("");
+  const [classSessionCode, setClassSessionCodeState] = useState("");
   const [selectedRecruiterId, setSelectedRecruiterIdState] = useState(defaultRecruiter.id);
   const [selectedCompanyId, setSelectedCompanyIdState] = useState(defaultCompany.id);
   const [selectedJobRoleId, setSelectedJobRoleIdState] = useState(defaultJobRole.id);
@@ -110,6 +113,16 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setClassSessionCode = (code: string) => {
+    const normalizedCode = code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+    setClassSessionCodeState(normalizedCode);
+
+    if (typeof window !== "undefined") {
+      if (normalizedCode) localStorage.setItem("english-ai-class-session-code", normalizedCode);
+      else localStorage.removeItem("english-ai-class-session-code");
+    }
+  };
+
   const setSelectedLevel = (level: TrainingLevel) => {
     setSelectedLevelState(level);
     setCurrentQuestionIndex(0);
@@ -166,7 +179,7 @@ export function InterviewProvider({ children }: { children: ReactNode }) {
 
   return (
     <InterviewContext.Provider value={{
-      candidateName, setCandidateName, selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole, setSelectedCompanyId, setSelectedJobRoleId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
+      candidateName, setCandidateName, classSessionCode, setClassSessionCode, selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole, setSelectedCompanyId, setSelectedJobRoleId, selectedLevel, setSelectedLevel, currentQuestionIndex, currentQuestion, totalQuestions,
       completedQuestions, remainingQuestions, progress, isFirstQuestion, isLastQuestion,
       interviewFinished, flow, setFlow, attempts, saveAttempt, candidateQuestion, setCandidateQuestion, startQuestion, nextQuestion, nextQuestionAutoStart,
       previousQuestion, finishInterview, resetInterview,

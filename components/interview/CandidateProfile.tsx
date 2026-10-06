@@ -9,12 +9,18 @@ interface Props {
 }
 
 export default function CandidateProfile({ onContinue }: Props) {
-  const { candidateName, setCandidateName, setSelectedLevel } = useInterviewContext();
+  const { candidateName, setCandidateName, setSelectedLevel, classSessionCode, setClassSessionCode } = useInterviewContext();
   const [nameInput, setNameInput] = useState(candidateName);
 
   useEffect(() => {
     setNameInput(candidateName);
   }, [candidateName]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionFromUrl = params.get("session") ?? "";
+    setClassSessionCode(sessionFromUrl);
+  }, [setClassSessionCode]);
 
   const normalizedName = nameInput.trim().replace(/\s+/g, " ");
 
@@ -23,7 +29,8 @@ export default function CandidateProfile({ onContinue }: Props) {
     if (!normalizedName) return;
 
     // Fix 43.1: the teaching demonstration always uses Level 1 (basic).
-    // Pressing Enter confirms the name and moves directly to company setup.
+    // Fix 43.3: a ?session=CODE URL silently attaches the candidate to the
+    // teacher's cloud session without adding another classroom setup screen.
     setSelectedLevel("basic");
     setCandidateName(normalizedName);
     onContinue();
@@ -43,6 +50,11 @@ export default function CandidateProfile({ onContinue }: Props) {
                 Candidate check-in
               </span>
               <span>Level 1 · Basic</span>
+              {classSessionCode && (
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-3 py-1.5 text-emerald-100">
+                  Class session · {classSessionCode}
+                </span>
+              )}
             </div>
             <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-3xl">
               Enter your name for the interview
@@ -80,6 +92,11 @@ export default function CandidateProfile({ onContinue }: Props) {
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Level 1 – Cơ bản is selected automatically. Press Enter to continue.
           </p>
+          {classSessionCode && (
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+              <strong>Classroom sync enabled.</strong> Your completed result will be saved on this device first, then synchronized to the teacher dashboard.
+            </div>
+          )}
         </form>
       </div>
     </section>

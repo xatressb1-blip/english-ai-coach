@@ -26,15 +26,31 @@ export default function InterviewEngine() {
   const [enteredRoom, setEnteredRoom] = useState(false);
   const [briefingCompleted, setBriefingCompleted] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [reuseInterviewSetup, setReuseInterviewSetup] = useState(false);
 
   const {
     candidateName,
+    setCandidateName,
     currentQuestionIndex,
     totalQuestions,
     interviewFinished,
     flow,
     startQuestion,
+    resetInterview,
   } = useInterviewContext();
+
+  const startNextCandidate = () => {
+    // Fix 43.3: preserve company / position / recruiter and class session,
+    // but clear the previous candidate's interview state before the partner starts.
+    resetInterview();
+    setCandidateName("");
+    setProfileCompleted(false);
+    setPositionChosen(true);
+    setEnteredRoom(false);
+    setBriefingCompleted(false);
+    setShowReport(false);
+    setReuseInterviewSetup(true);
+  };
 
   // Fix 43: Mock Interview is now the single teaching-demo entry flow.
   // Classroom Rapid Mode remains in source for rollback/history, but is not
@@ -45,7 +61,17 @@ export default function InterviewEngine() {
   if (!positionChosen) return <InterviewPositionSetup onContinue={() => setPositionChosen(true)} />;
 
   if (!enteredRoom) {
-    return <VirtualInterviewLobby candidateName={candidateName} totalQuestions={totalQuestions} onEnter={() => setEnteredRoom(true)} />;
+    return (
+      <VirtualInterviewLobby
+        candidateName={candidateName}
+        totalQuestions={totalQuestions}
+        recruiterPreselected={reuseInterviewSetup}
+        onEnter={() => {
+          setEnteredRoom(true);
+          setReuseInterviewSetup(false);
+        }}
+      />
+    );
   }
 
   if (!briefingCompleted) {
@@ -63,8 +89,8 @@ export default function InterviewEngine() {
 
   // Fix 43: after the scored interview questions, go directly to the concise
   // professional closing. Peer observers give feedback from paper forms.
-  if (interviewFinished && !showReport) return <InterviewClosing onViewReport={() => setShowReport(true)} />;
-  if (interviewFinished && showReport) return <FinalRecruiterReport />;
+  if (interviewFinished && !showReport) return <InterviewClosing onViewReport={() => setShowReport(true)} onStartNextCandidate={startNextCandidate} />;
+  if (interviewFinished && showReport) return <FinalRecruiterReport onStartNextCandidate={startNextCandidate} />;
 
   if (flow.state === InterviewState.READY) {
     return <div className="mx-auto w-full max-w-5xl"><ReadyScreen current={currentQuestionIndex + 1} total={totalQuestions} onReady={startQuestion} /></div>;

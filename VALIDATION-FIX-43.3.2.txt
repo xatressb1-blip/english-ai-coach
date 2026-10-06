@@ -1,0 +1,7 @@
+npx tsc --noEmit: PASS
+npm run build (Next 16.2.10): PASS, exit 0
+Deterministic/missing data/unavailable/criterion attainment tests: PASS
+React static render, 4 synthetic candidates and required sections: PASS
+Live browser/Supabase sync/Gemini/Vercel end-to-end: NOT RUN
+Teacher computer checks: PENDING
+Source changes confined to dashboard + new synthesis component/service.
