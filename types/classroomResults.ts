@@ -1,3 +1,4 @@
+import type { IdeaAssessment } from "@/types/evaluation";
 import type { InterviewAttempt, RecruiterReport } from "@/types/interviewReport";
 
 export type ClassroomEvaluationMode = "live_ai" | "mixed" | "backup_rubric" | "unavailable";
@@ -24,6 +25,13 @@ export interface ClassroomQuestionResult {
   coverageScore: number | null;
   evidenceQualityScore: number | null;
   structureScore: number | null;
+  // Optional additions inside existing JSONB columns; older results remain valid.
+  grammar?: { score: number; comment: string; mistakes: string[] } | null;
+  vocabulary?: { score: number; comment: string } | null;
+  criteria?: IdeaAssessment[];
+  evaluationVersion?: string;
+  evaluationNotice?: string;
+
 }
 
 export interface ClassroomCandidateResult {

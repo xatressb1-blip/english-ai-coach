@@ -23,14 +23,18 @@ function words(text: string) {
   return clean ? clean.split(/\s+/).filter(Boolean).length : 0;
 }
 
-function hasPositiveMatch(text: string, patterns: RegExp[]) {
+function positiveEvidence(text: string, patterns: RegExp[]) {
   const clean = normalize(text);
-  return patterns.some((pattern) => {
+  for (const pattern of patterns) {
     const match = clean.match(pattern);
-    if (!match || match.index == null) return false;
+    if (!match || match.index == null) continue;
     const before = clean.slice(Math.max(0, match.index - 32), match.index);
-    return !NEGATION_WINDOW.test(before);
-  });
+    if (NEGATION_WINDOW.test(before)) continue;
+    // Exact bounded excerpt of the recorded transcript, never a fabricated quote.
+    const from = Math.max(0, match.index - 30);
+    return clean.slice(from, Math.min(clean.length, match.index + match[0].length + 100));
+  }
+  return "";
 }
 
 function rulesForQuestion(questionId: number): CriterionRule[] {
@@ -78,14 +82,16 @@ function assessCriteria(question: InterviewQuestion, transcript: string): IdeaAs
 
   return expected.map((idea) => {
     const rule = localRules.find((item) => item.id === idea.id);
-    const covered = rule ? hasPositiveMatch(transcript, rule.covered) : false;
-    const partial = !covered && rule?.partial ? hasPositiveMatch(transcript, rule.partial) : false;
+    const coveredEvidence = rule ? positiveEvidence(transcript, rule.covered) : "";
+    const covered = !!coveredEvidence;
+    const partialEvidence = !covered && rule?.partial ? positiveEvidence(transcript, rule.partial) : "";
+    const partial = !!partialEvidence;
 
     return {
       id: idea.id,
       label: idea.label,
       status: covered ? "covered" : partial ? "partial" : "missing",
-      evidence: covered ? "Criterion supported by the recorded transcript." : "",
+      evidence: coveredEvidence || partialEvidence,
       coachingTip: covered ? "" : idea.description,
     };
   });

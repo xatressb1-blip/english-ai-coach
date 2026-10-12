@@ -13,7 +13,7 @@ interface Props {
   recruiterPreselected?: boolean;
 }
 
-export default function VirtualInterviewLobby({ candidateName, totalQuestions, onEnter, recruiterPreselected = false }: Props) {
+export default function VirtualInterviewLobby({ candidateName, totalQuestions, onEnter, recruiterPreselected = true }: Props) {
   const { selectedRecruiter, setSelectedRecruiterId, selectedCompany, selectedJobRole } = useInterviewContext();
   const [hasChosenRecruiter, setHasChosenRecruiter] = useState(recruiterPreselected);
 

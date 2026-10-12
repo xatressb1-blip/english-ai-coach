@@ -155,7 +155,7 @@ function mergeAIAssessments(
       coachingTip:
         typeof ai.coachingTip === "string" && ai.coachingTip.trim()
           ? ai.coachingTip.trim()
-          : idea.description,
+          : normalizeStatus(ai.status) === "covered" ? "" : idea.description,
     };
   });
 }

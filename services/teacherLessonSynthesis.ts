@@ -52,3 +52,18 @@ export function supportedNotes(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === "string" && !!v.trim())
     .filter(v => !/eye[ -]?contact|posture|body language|confidence|confident|pronunciation|fluency|fluent|voice|pace|attitude|listening|gesture|professional behavio|ánh mắt|tư thế|tự tin|phát âm|trôi chảy|giọng|tác phong/i.test(v));
 }
+
+export function questionNotes(q: ClassroomQuestionResult | null, kind: "strength" | "improvement") {
+  if (!usable(q)) return [];
+  const notes = supportedNotes([q?.[kind]]);
+  return kind === "strength" ? notes.filter(v => !/needs? improvement|needs? more|add a|missing|not covered/i.test(v)) : notes;
+}
+export function candidateNotes(result: ClassroomCandidateResult, kind: "strengths" | "improvements") {
+  const notes = supportedNotes(result[kind]);
+  // Backup scores copy a content band into language fields; mixed results cannot
+  // distinguish the origin of stored aggregate language notes either.
+  if (result.evaluation_mode !== "live_ai") return [];
+  const opposite = supportedNotes(result[kind === "strengths" ? "improvements" : "strengths"]);
+  const base = (v: string) => v.split(/\s*[—–]\s*/)[0].trim().toLowerCase();
+  return notes.filter(v => !opposite.some(other => base(v) === base(other)));
+}

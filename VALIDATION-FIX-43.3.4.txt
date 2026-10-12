@@ -1,0 +1,6 @@
+npx tsc --noEmit: PASS
+npm run build: PASS
+Live/backup/unavailable/legacy mapping + 4 student rendering + tie/missing/mixed comparisons: PASS
+Original ZIP CRC: PASS
+Package, lockfile, API, Supabase schema and interview flow except recruiter preselection: unchanged
+Browser/micro/Live AI/Supabase/Vercel end-to-end: NOT RUN

@@ -1,0 +1,5 @@
+TypeScript: PASS
+Build: PASS
+Regression: mapping + 4-student static render + exact Backup evidence + covered tips + targeted practice + old evidence filter: PASS
+Interview/context/API/schema bytes unchanged vs FIX43.3.4
+Live browser/micro/Gemini/Supabase: NOT RUN

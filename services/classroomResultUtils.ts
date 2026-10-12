@@ -69,6 +69,27 @@ export function buildQuestionResult(attempt: InterviewAttempt | undefined): Clas
     coverageScore: unavailable ? null : evaluation.focusAnalysis?.coverageScore ?? null,
     evidenceQualityScore: unavailable ? null : evaluation.focusAnalysis?.evidenceQualityScore ?? null,
     structureScore: unavailable ? null : evaluation.focusAnalysis?.structureScore ?? null,
+    evaluationVersion: evaluation.evaluationVersion,
+    evaluationNotice: source !== "live_ai" ? (
+      /quota|limit|429/i.test(evaluation.evaluationError ?? "") ? "AI không khả dụng do giới hạn lượt hoặc hạn mức; đang dùng rubric dự phòng." :
+      /timeout|timed out/i.test(evaluation.evaluationError ?? "") ? "AI quá thời gian phản hồi; đang dùng rubric dự phòng." :
+      /network|fetch|connection/i.test(evaluation.evaluationError ?? "") ? "Kết nối AI gặp lỗi; đang dùng rubric dự phòng." :
+      "Live AI chưa khả dụng trong lượt này; giáo viên kiểm chứng phản hồi rubric."
+    ) : "",
+    grammar: source === "live_ai" && Number.isFinite(evaluation.grammar?.score) && typeof evaluation.grammar?.comment === "string" ? {
+      score: evaluation.grammar.score,
+      comment: evaluation.grammar.comment,
+      mistakes: Array.isArray(evaluation.grammar.mistakes) ? evaluation.grammar.mistakes.filter((v): v is string => typeof v === "string").slice(0, 5) : [],
+    } : null,
+    vocabulary: source === "live_ai" && Number.isFinite(evaluation.vocabulary?.score) && typeof evaluation.vocabulary?.comment === "string" ? {
+      score: evaluation.vocabulary.score, comment: evaluation.vocabulary.comment,
+    } : null,
+    criteria: unavailable ? [] : (evaluation.focusAnalysis?.ideaAssessments ?? []).filter(item =>
+      typeof item.id === "string" && typeof item.label === "string" &&
+      ["covered", "partial", "missing"].includes(item.status)
+    ).map(item => ({ id: item.id, label: item.label, status: item.status,
+      evidence: typeof item.evidence === "string" ? item.evidence : "",
+      coachingTip: typeof item.coachingTip === "string" ? item.coachingTip : "" })),
   };
 }
 

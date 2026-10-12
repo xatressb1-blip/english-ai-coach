@@ -65,7 +65,7 @@ export default function InterviewEngine() {
       <VirtualInterviewLobby
         candidateName={candidateName}
         totalQuestions={totalQuestions}
-        recruiterPreselected={reuseInterviewSetup}
+        recruiterPreselected={true}
         onEnter={() => {
           setEnteredRoom(true);
           setReuseInterviewSetup(false);

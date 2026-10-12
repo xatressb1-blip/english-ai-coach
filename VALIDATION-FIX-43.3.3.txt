@@ -1,0 +1,5 @@
+npx tsc --noEmit: PASS
+npm run build: PASS
+Deterministic note filtering and four-candidate server rendering: PASS
+Unchanged interview/context/API/service files vs FIX43.3.2 FULL verified: 82
+Live browser, Supabase, Vercel end-to-end: NOT RUN

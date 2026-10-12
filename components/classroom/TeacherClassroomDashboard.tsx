@@ -33,6 +33,7 @@ export default function TeacherClassroomDashboard() {
   const [session, setSession] = useState<ClassroomCloudSession | null>(null);
   const [results, setResults] = useState<ClassroomCandidateResult[]>([]);
   const [requestedCode, setRequestedCode] = useState("HG2026");
+  const [reopenCode, setReopenCode] = useState("");
   const [sessionName, setSessionName] = useState("Job Interview Teaching Demo");
   const [loading, setLoading] = useState(false);
   const [pollingError, setPollingError] = useState("");
@@ -52,6 +53,7 @@ export default function TeacherClassroomDashboard() {
       if (!response.ok || !data.session) throw new Error(data.error || "Could not load class results.");
       setSession(data.session);
       setResults(data.results ?? []);
+      if (!silent) setShowSummary(false);
       setPollingError("");
       localStorage.setItem(TEACHER_SESSION_KEY, data.session.session_code);
     } catch (error) {
@@ -93,6 +95,8 @@ export default function TeacherClassroomDashboard() {
     if (!next) return;
     sessionStorage.setItem(TEACHER_PIN_KEY, next);
     setPin(next);
+    const previous = localStorage.getItem(TEACHER_SESSION_KEY);
+    if (previous) void loadSession(previous, next);
   };
 
   const createSession = async (event: FormEvent<HTMLFormElement>) => {
@@ -178,7 +182,7 @@ export default function TeacherClassroomDashboard() {
   if (!pin) {
     return (
       <section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.2 · Teacher access</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.5 · Teacher access</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Class Results Dashboard</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">Enter the teacher PIN configured on the server. Students never need this PIN.</p>
         <form onSubmit={login} className="mt-6 space-y-4">
@@ -192,9 +196,15 @@ export default function TeacherClassroomDashboard() {
   if (!session) {
     return (
       <section className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.2 · Teacher dashboard</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.5 · Teacher dashboard</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Create the teaching-demo session</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">The session expects four candidates. Student results are saved locally first and then synchronized to Supabase.</p>
+<form onSubmit={event => { event.preventDefault(); if (reopenCode.trim()) void loadSession(reopenCode.trim()); }} className="mt-6 rounded-2xl border border-teal-200 bg-teal-50 p-4">
+          <h2 className="font-black text-teal-900">Mở lại phiên đã lưu / Open saved session</h2>
+          <p className="mt-2 text-sm text-teal-900">Nhập mã phiên cũ để xem kết quả trên Supabase. Không tạo phiên mới.</p>
+          <label className="mt-3 block text-sm font-bold">Session code<input required value={reopenCode} onChange={event => setReopenCode(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0,24))} placeholder="Ví dụ: BUO1" className="mt-2 w-full rounded-xl border border-teal-300 bg-white px-4 py-3 font-mono uppercase" /></label>
+          <button disabled={loading} className="mt-3 rounded-xl bg-teal-700 px-5 py-3 font-bold text-white disabled:opacity-50">{loading ? "Loading..." : "MỞ PHIÊN ĐÃ LƯU"}</button>
+        </form>
         <form onSubmit={createSession} className="mt-6 grid gap-4">
           <label className="text-sm font-bold text-slate-700">Session name<input value={sessionName} onChange={(event) => setSessionName(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-medium" /></label>
           <label className="text-sm font-bold text-slate-700">Session code<input value={requestedCode} onChange={(event) => setRequestedCode(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24))} placeholder="Leave blank for an automatic code" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-mono font-bold uppercase" /></label>
@@ -207,6 +217,12 @@ export default function TeacherClassroomDashboard() {
 
   return (
     <section className="mx-auto max-w-7xl space-y-5">
+      <form onSubmit={event => { event.preventDefault(); if (reopenCode.trim()) void loadSession(reopenCode.trim()); }} className="mt-6 rounded-2xl border border-teal-200 bg-teal-50 p-4">
+          <h2 className="font-black text-teal-900">Mở lại phiên đã lưu / Open saved session</h2>
+          <p className="mt-2 text-sm text-teal-900">Nhập mã phiên cũ để xem kết quả trên Supabase. Không tạo phiên mới.</p>
+          <label className="mt-3 block text-sm font-bold">Session code<input required value={reopenCode} onChange={event => setReopenCode(event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0,24))} placeholder="Ví dụ: BUO1" className="mt-2 w-full rounded-xl border border-teal-300 bg-white px-4 py-3 font-mono uppercase" /></label>
+          <button disabled={loading} className="mt-3 rounded-xl bg-teal-700 px-5 py-3 font-bold text-white disabled:opacity-50">{loading ? "Loading..." : "MỞ PHIÊN ĐÃ LƯU"}</button>
+        </form>
       <header className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 p-6 text-white shadow-2xl sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
