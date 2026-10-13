@@ -182,7 +182,7 @@ export default function TeacherClassroomDashboard() {
   if (!pin) {
     return (
       <section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.5 · Teacher access</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.6 · Teacher access</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Class Results Dashboard</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">Enter the teacher PIN configured on the server. Students never need this PIN.</p>
         <form onSubmit={login} className="mt-6 space-y-4">
@@ -196,7 +196,7 @@ export default function TeacherClassroomDashboard() {
   if (!session) {
     return (
       <section className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.5 · Teacher dashboard</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.6 · Teacher dashboard</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Create the teaching-demo session</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">The session expects four candidates. Student results are saved locally first and then synchronized to Supabase.</p>
 <form onSubmit={event => { event.preventDefault(); if (reopenCode.trim()) void loadSession(reopenCode.trim()); }} className="mt-6 rounded-2xl border border-teal-200 bg-teal-50 p-4">
@@ -249,7 +249,7 @@ export default function TeacherClassroomDashboard() {
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
+      <details open={!showSummary} className="rounded-2xl border border-slate-200 bg-white p-3"><summary className="cursor-pointer font-bold text-blue-900">Trạng thái phỏng vấn và link sinh viên · {completed}/{expected}</summary><div className="mt-3 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><p className="text-xs font-black uppercase tracking-[.16em] text-blue-700">Live results</p><h2 className="mt-1 text-2xl font-black text-slate-950">Candidate status</h2></div>
@@ -305,6 +305,7 @@ export default function TeacherClassroomDashboard() {
         </aside>
       </div>
 
+      </details>
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
