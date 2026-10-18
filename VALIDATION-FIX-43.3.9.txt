@@ -1,0 +1,12 @@
+FIX 43.3.9 validation
+PASS: npx tsc --noEmit (exit 0).
+PASS: npm run build, Next.js 16.2.10, 16 static pages (exit 0).
+PASS: attainment.cjs fixtures: exact threshold, required core, missing/legacy data,
+placeholder/keyword/negation/duplicate evidence, teacher good-level conditions,
+local confirmation serialization/signature invalidation, no source result mutation,
+four-student summary + selected details rendering without numeric grades,
+Backup transparency, dashboard numeric grade removal.
+PASS: audio-visual.cjs mock lifecycle regression from 43.3.8.
+NOT VERIFIED: browser interaction/storage E2E, real audio, Supabase E2E, Vercel.
+ZIP integrity, bytes and allowed change sets vs 43.3.6 / 43.3.8 checked.
+This is a teacher presentation/attainment change; stored numeric grades are retained.

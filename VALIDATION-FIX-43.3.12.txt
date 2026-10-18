@@ -1,0 +1,8 @@
+FIX 43.3.12 — KIỂM TRA TRONG MÔI TRƯỜNG XÂY DỰNG
+PASS npx --no-install tsc --noEmit (compiler TypeScript đã cài trong dự án).
+PASS npm run build: Next 16.2.10 Turbopack, 16/16 trang tĩnh.
+PASS fixture/static render: bảo toàn các kiểm tra minh chứng FIX 43.3.11; Q2 ngắn, phủ định, trùng tiêu chí, thiếu nguồn, Q3 growth; nhãn tích cực đủ căn cứ và nhãn trung tính khi thiếu; 4 sinh viên/12 ô; điểm đã làm được Q1-Q3; bảng chính không số ý/điểm/xếp loại; chi tiết giữ dữ liệu; không sửa result hoặc thêm Gemini.
+Build lần đầu thất bại vì node_modules symlink ra ngoài project; đã thay bằng thư mục thư viện thật rồi build lại PASS. Không thay package/lock.
+CHƯA kiểm thử giao diện trên trình duyệt thật, micro/giọng nói, kết nối Supabase thật hoặc deployment Vercel. Chromium không có trong môi trường.
+CHƯA sửa/xóa Session hoặc bộ đếm đổi vai. Giáo viên tạo mã phiên mới để luyện.
+ZIP kiểm tra CRC, đường dẫn, exclusions và PATCH tái tạo FULL; không kèm env, node_modules, .next, .git.

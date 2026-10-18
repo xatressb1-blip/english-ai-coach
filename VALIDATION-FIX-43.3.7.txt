@@ -1,0 +1,10 @@
+FIX 43.3.7 validation
+PASS: npx tsc --noEmit (exit 0).
+PASS: npm run build, Next.js 16.2.10, 16 static pages (exit 0).
+PASS: lesson-overview.cjs regression fixtures and four-student static rendering.
+PASS: fix4337.cjs recorder display states, stable portrait, no premature completion,
+      exact quote strength, missing/legacy data, deterministic practice.
+Static React rendering reports styled-jsx non-boolean attribute warning outside Next compiler;
+production Next build succeeds. These checks are not browser/audio E2E.
+NOT VERIFIED: live microphone/playback, real Supabase sync, browser layout, Vercel deployment.
+ZIP integrity and comparison against FIX 43.3.6: checked during packaging.

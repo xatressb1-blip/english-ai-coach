@@ -1,0 +1,16 @@
+FIX 43.3.11 validation
+PASS: npx tsc --noEmit (project directory).
+PASS: npm run build, Next 16.2.10, 16 static pages.
+PASS: readonly.cjs: manually transcribed A1 Q2 fixture with saved criterion states,
+short quote contextual recovery, negated/unrelated/isolated keywords, word boundaries,
+duplicate criteria, Q1 name/major/career short evidence, Q3 explicit growth vs absent,
+negative and duplicate records, Q1/Q2 3/5 and Q3 2/4 thresholds + required core,
+empty/unavailable source, completion separate from attainment, 4-student SSR and
+details without teacher inputs/numeric grades/browser storage, session isolation,
+no result mutation or new AI calls.
+NOT VERIFIED: live voice/transcription, actual session JSON equivalence, browser layout
+and clicks, Supabase live, Vercel. Browser executable unavailable.
+A1 Q1/Q2/Q3 screenshots including the final Q3 transcript inspected; manually transcribed
+fixtures tested. Actual Supabase JSON and original audio were not accessed.
+Only 3 source files changed; interview/audio/sync/API/schema/package bytes unchanged.
+PATCH for 43.3.10 only. ZIP integrity and exact FULL equivalence checked.

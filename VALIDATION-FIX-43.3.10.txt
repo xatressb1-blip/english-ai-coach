@@ -1,0 +1,13 @@
+FIX 43.3.10 validation
+PASS: npx tsc --noEmit, run in source project directory.
+PASS: npm run build, Next 16.2.10, 16 static pages.
+PASS: scenarios.cjs fixtures: Q1/Q2 3/5, Q3 2/4, required core, completion vs
+attainment, legacy/corrupted transcripts, teacher correction basis and provenance,
+good-level guards, stale confirmation invalidation, malformed saved data filtering,
+4-student static rendering and controlled selectors, hook-harness change/save/reload.
+PASS: source result/transcript not mutated; source changes only 3 allowed files;
+interview/recorder/audio/sync/API/schema/package files identical to FIX 43.3.9.
+PASS: ZIP CRC, bytes and patch application equivalence to FULL.
+NOT VERIFIED: real browser layout/interaction/storage E2E, microphone/audio, Supabase E2E,
+Vercel. Browser launch blocked by missing Chromium executable.
+No claim that transcript errors or all semantic matching problems are solved.

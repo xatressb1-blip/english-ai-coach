@@ -1,35 +1,73 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ClassroomCandidateResult, ClassroomQuestionResult } from "@/types/classroomResults";
-import { QUESTIONS, metric, questionNotes, questions, supportedNotes, usable } from "@/services/teacherLessonSynthesis";
-import { coaching, criterionEvidence } from "@/services/teacherCoaching";
-import { lessonOverview, lessonClassSummary } from "@/services/lessonAnswerOverview";
-import { classFeedback, contentLabel, contentValue, languageDetail, languageSummary, studentFeedback } from "@/services/teacherEvaluationForm";
+import { QUESTIONS, questions, supportedNotes } from "@/services/teacherLessonSynthesis";
+import { criterionEvidence } from "@/services/teacherCoaching";
+import { languageDetail } from "@/services/teacherEvaluationForm";
+import { questionAttainment, studentAttainment, teacherNarrative } from "@/services/lessonAttainment";
 
-const panel = "rounded-2xl border border-slate-200 bg-white p-5";
-function mode(value: string) { return ({live_ai:"Live AI",mixed:"Mixed AI + Backup",backup_rubric:"Backup Rubric"} as Record<string,string>)[value] ?? "Unavailable"; }
-function Language({ q, kind }: {q: ClassroomQuestionResult | null; kind: "grammar" | "vocabulary"}) {
-  const detail = languageDetail(q,kind);
-  return <div><h5 className="font-bold text-blue-900">{kind === "grammar" ? "Grammar" : "Vocabulary"}</h5>{detail ? <><p>{detail.score}/10 · {detail.comment || "Chưa lưu nhận xét."}</p>{kind === "grammar" && q?.grammar && <ul className="mt-1 list-disc pl-5">{supportedNotes(q.grammar.mistakes).map((v,i)=><li key={i}>{v}</li>)}</ul>}</> : <p className="text-slate-600">{q?.source === "backup_rubric" ? "Backup: chưa đánh giá ngôn ngữ độc lập." : "Chưa lưu đánh giá ngôn ngữ chi tiết."}</p>}</div>;
+import { studentPresentation } from "@/services/lessonPresentation";
+
+const panel = "rounded-2xl border border-slate-200 bg-white p-4 sm:p-5";
+const mode = (value: string) => ({ live_ai: "AI trực tiếp", mixed: "AI trực tiếp kết hợp tiêu chí dự phòng", backup_rubric: "Tiêu chí dự phòng" } as Record<string, string>)[value] ?? "Chưa có phân tích";
+function Language({ q, kind }: { q: ClassroomQuestionResult | null; kind: "grammar" | "vocabulary" }) {
+  const detail = languageDetail(q, kind);
+  return <div><h5 className="font-bold text-blue-900">{kind === "grammar" ? "Ngữ pháp" : "Từ vựng"}</h5>
+    {detail ? <><p className="text-sm">{teacherNarrative(detail.comment || "Chưa lưu nhận xét chi tiết.")}</p>
+      {kind === "grammar" && q?.grammar && <ul className="mt-1 list-disc pl-5 text-sm">{supportedNotes(q.grammar.mistakes).map((v, i) => <li key={i}>{teacherNarrative(v)}</li>)}</ul>}</>
+      : <p className="text-sm text-slate-600">{q?.source === "backup_rubric" ? "Chế độ dự phòng chưa có phân tích ngôn ngữ độc lập." : "Chưa lưu phân tích ngôn ngữ chi tiết."}</p>}
+  </div>;
 }
-export default function TeacherLessonSynthesis({sessionId,results,expected}:{sessionId:string;results:ClassroomCandidateResult[];expected:number}) {
-  const [selected,setSelected] = useState<string | null>(null);
-  const [judgment,setJudgment] = useState("");
-  const [saved,setSaved] = useState("");
-  const storageKey = `english-ai-teacher-judgment-v4332:${sessionId}`;
-  useEffect(()=>{try {setJudgment(localStorage.getItem(storageKey) ?? "");} catch {setSaved("Không đọc được kết luận đã lưu.");}},[storageKey]);
-  const classroom = classFeedback(results);
-  const student = results.find(r=>r.id===selected);
-  function save() {try {localStorage.setItem(storageKey,judgment);setSaved("Đã lưu trên trình duyệt này; chưa đồng bộ Supabase.");}catch{setSaved("Lưu chưa thành công. Hãy sao chép kết luận trước khi đóng trang.");}}
-  return <section className="space-y-5 rounded-3xl border border-blue-200 bg-slate-50 p-5 shadow-xl sm:p-7">
-    <header><p className="text-sm font-bold text-blue-700">FIX 43.3.6 · {results.length}/{expected} sinh viên đã có kết quả</p><h2 className="mt-1 text-2xl font-black text-blue-950">EVALUATION FORM (AI)</h2><p className="mt-2 text-sm text-slate-600">Phản hồi hỗ trợ luyện tập. Cô kết hợp quan sát và góp ý của bạn học để kết luận. Không xếp hạng sinh viên.</p></header>
-    <p className="text-sm font-semibold text-blue-950">{lessonClassSummary(results)}</p>
-    <p className="text-xs text-slate-600">Đã đề cập ≠ đã làm rõ. Xanh ngọc: đủ ý, có minh chứng rõ theo tiêu chí đã lưu; hổ phách: cần bổ sung/làm rõ; xám: chưa đủ dữ liệu. Cô xác nhận kết luận.</p>
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[760px] table-fixed text-left text-sm"><thead className="bg-blue-950 text-white"><tr><th scope="col" className="w-[16%] px-3 py-3">Sinh viên</th>{QUESTIONS.map((q,i)=><th scope="col" key={q.title} className="px-3 py-3">Q{i+1}<span className="mt-1 block text-xs font-normal">{["Giới thiệu bản thân · 5 ý","Điểm mạnh · 5 phần","Lý do chọn công ty · 4 phần"][i]}</span></th>)}</tr></thead><tbody>{results.map(r=><tr key={r.id} className="border-t border-slate-200 align-top"><th scope="row" className="px-3 py-3"><span>{r.candidate_name}</span><p className="mt-1 text-[11px] font-normal text-slate-500">{mode(r.evaluation_mode)}</p><button type="button" aria-expanded={selected===r.id} aria-controls="student-evaluation-details" onClick={()=>setSelected(selected===r.id?null:r.id)} className="mt-2 rounded-lg bg-blue-700 px-2 py-1 text-xs font-bold text-white">{selected===r.id?"Đóng chi tiết":"Xem chi tiết"}</button></th>{questions(r).map((q,i)=>{const overview=lessonOverview(q,i);return <td key={i} className="px-2 py-2"><div className={`h-full rounded-xl border p-3 ${overview.tone==="good"?"border-teal-200 bg-teal-50 text-teal-950":overview.tone==="unknown"?"border-slate-200 bg-slate-50 text-slate-700":"border-amber-200 bg-amber-50 text-amber-950"}`}><p className="font-bold">{overview.level}</p><p className="mt-1 text-xs">{overview.countText}</p><p className="mt-1 text-xs">{overview.next}</p></div></td>;})}</tr>)}</tbody></table></div>
-    {student && <section id="student-evaluation-details" className={panel}><div className="flex items-center justify-between gap-3"><h3 className="text-xl font-black text-blue-950">Q1–Q3 · {student.candidate_name}</h3><button type="button" onClick={()=>setSelected(null)} className="font-bold text-blue-700">Đóng</button></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><p className="rounded-xl bg-teal-50 p-3 text-teal-900"><strong>Câu trả lời nổi bật trong phiên: </strong>{studentFeedback(student).best===null?"Chưa xác định rõ từ dữ liệu hiện có.":`Q${studentFeedback(student).best!+1} — chỉ báo nội dung cao hơn hai câu còn lại.`}</p><p className="rounded-xl bg-amber-50 p-3 text-amber-900"><strong>Câu cần luyện thêm: </strong>{studentFeedback(student).practice===null?"Cô chọn từ ưu tiên cải thiện và minh chứng.":`Q${studentFeedback(student).practice!+1} — chỉ báo nội dung thấp hơn hai câu còn lại.`}</p></div><p className="mt-2 text-xs text-slate-500">Chỉ đối chiếu khi cả ba câu đủ chỉ số, cùng nguồn đánh giá và không hòa mức nổi bật/thấp nhất. Đây không phải xếp hạng sinh viên.</p><div className="mt-4 grid gap-4 xl:grid-cols-3">{questions(student).map((q,i)=><article key={i} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><h4 className="font-black text-blue-950">Q{i+1}: {QUESTIONS[i].title}</h4><p className="text-xs text-slate-600">{QUESTIONS[i].structure}</p><p className="font-bold">{lessonOverview(q,i).level}</p><p className="text-sm">{lessonOverview(q,i).countText}</p><ul className="space-y-2 text-sm">{lessonOverview(q,i).parts.map(part=><li key={part.label}><strong>{part.label}</strong>: {part.clear?"Có minh chứng rõ":part.mentioned?"Đã đề cập, cần làm rõ/xác minh":part.known?"Chưa nhận diện":"Chưa đủ dữ liệu"}{part.evidence && <p className="mt-1 text-xs text-slate-600">{part.origin}: “{part.evidence}”</p>}</li>)}</ul><p className="text-xs text-slate-500">{mode(q?.source ?? "unavailable")} · Điểm đã lưu: {usable(q)?metric(q?.score,10) ?? "—":"—"}/10{q?.source==="backup_rubric"?" (mức quy đổi rubric)":""}</p>{q?.evaluationNotice && <p className="text-xs text-amber-900">{q.evaluationNotice}</p>}<Language q={q} kind="grammar"/><Language q={q} kind="vocabulary"/><div><h5 className="font-bold text-teal-800">Strengths</h5><p>{coaching(q).strength}</p></div><div><h5 className="font-bold text-amber-800">Areas to Improve</h5><p>{coaching(q).improvement}</p></div><div><h5 className="font-bold text-blue-800">Next Practice</h5><p>{lessonOverview(q,i).next} Nói lại và giải thích điều đã sửa với bạn/cô.</p></div><details><summary className="cursor-pointer font-bold text-blue-800">Minh chứng và tiêu chí</summary>{q?.criteria?.length ? <ul className="mt-2 space-y-2">{q.criteria.map((c,j)=><li key={j}><strong>{c.label}</strong>: {({covered:"Đã thể hiện",partial:"Một phần",missing:"Chưa thể hiện"} as Record<string,string>)[c.status] ?? "Chưa đủ dữ liệu"}{criterionEvidence(q,c.evidence) ? <p>Minh chứng đã lưu: {criterionEvidence(q,c.evidence)}</p> : c.status !== "missing" ? <p>Chưa có trích dẫn cụ thể; cô đối chiếu transcript.</p> : null}{c.status !== "covered" && supportedNotes([c.coachingTip])[0] && <p>Gợi ý: {supportedNotes([c.coachingTip])[0]}</p>}</li>)}</ul>:<p className="mt-2">Kết quả này chưa lưu minh chứng theo từng tiêu chí.</p>}<p className="mt-2 text-xs">Coverage: {usable(q)?metric(q?.coverageScore) ?? "—":"—"}% · Structure (ước lượng số câu): {usable(q)?metric(q?.structureScore) ?? "—":"—"}% · Evidence: {usable(q)?metric(q?.evidenceQualityScore) ?? "—":"—"}%</p></details><details><summary className="cursor-pointer font-bold text-blue-800">Xem transcript</summary><p className="mt-2 text-xs text-amber-900">Bản nhận diện lời nói có thể sai. Cô xác minh với lời nói thực tế trước khi quy thành lỗi ngôn ngữ. Transcript gốc được giữ nguyên.</p><p className="mt-2 whitespace-pre-wrap break-words">{q?.transcript || "Chưa lưu transcript."}</p></details></article>)}</div><p className="mt-4 text-xs text-slate-500">Chỉ số so sánh tham khảo dùng giá trị thấp nhất của nội dung, cấu trúc và minh chứng: ≥70 / 50–69 / dưới 50. Đây không phải kết luận đạt mục tiêu bài học. Structure chỉ ước lượng từ số câu và độ dài, chưa chứng minh đúng trình tự ý. Thiếu chỉ số là chưa đủ dữ liệu. Nhận xét AI cần cô kiểm chứng; không suy ra giọng nói hay hành vi từ transcript.</p></section>}
-    <p className="text-sm text-blue-950"><strong>Luyện tiếp:</strong> Mỗi em chọn một việc trong ô Q1–Q3, bổ sung bằng trải nghiệm thật và trao đổi với bạn.</p>
-    <details className={panel}><summary className="cursor-pointer font-bold text-blue-900">Lesson Objective Achievement · Minh chứng Activity 2</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-sm"><li>Nhận diện câu hỏi và cấu trúc: cô yêu cầu sinh viên giải thích khung Q1–Q3.</li><li>Trả lời cá nhân hóa bằng tiếng Anh: đối chiếu nội dung và nhận xét ngôn ngữ trong chi tiết.</li><li>Dùng AI để cải thiện: xem phần sinh viên đã sửa sau góp ý; nhận phản hồi chưa chứng minh đã sửa.</li><li>Chủ động và hợp tác: cô/bạn quan sát xác nhận đổi vai, góp ý và nhiệm vụ đã thống nhất.</li></ul></details>
-    <details className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><summary className="cursor-pointer font-black text-indigo-900">Teacher Final Judgment · Kết luận của cô</summary><label htmlFor="teacher-judgment" className="mt-2 block text-sm">Kết luận của cô và nhiệm vụ tiếp theo</label><textarea id="teacher-judgment" rows={3} value={judgment} onChange={e=>{setJudgment(e.target.value);setSaved("");}} placeholder="Một điểm mạnh, một ưu tiên cải thiện và hướng dẫn tiếp theo. Kết hợp dữ liệu AI, góp ý của bạn và quan sát trực tiếp." className="mt-2 w-full rounded-xl border border-indigo-300 bg-white p-3"/><button type="button" onClick={save} className="mt-2 rounded-xl bg-indigo-700 px-4 py-2 font-bold text-white">Lưu kết luận</button><p role="status" className="mt-2 text-xs text-slate-600">{saved || "Kết luận lưu trên trình duyệt này. Cô/peer observer đánh giá eye contact, posture và hành vi trực tiếp."}</p></details>
+function QuestionCard({ q, index }: { q: ClassroomQuestionResult | null; index: number }) {
+  const row = questionAttainment(q, index);
+  return <article className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <h4 className="font-black text-blue-950">Q{index + 1} · {QUESTIONS[index].title}</h4>
+    <p className="text-xs text-slate-600">{QUESTIONS[index].structure}</p>
+    <p className="font-bold text-blue-950">{row.countText}</p><p className="text-sm">{row.label}</p>
+    <ul className="space-y-3 text-sm">{row.parts.map(part => <li key={part.label}>
+      <strong>{part.label}</strong>: {part.counted ? part.developed ? "Đã thể hiện" : "Đã đề cập, cần làm rõ" : part.known ? "Cần bổ sung" : "Chưa đủ minh chứng để xác nhận"}
+      {(part.evidence || part.hint) && <p className="mt-1 text-xs text-slate-600">{part.counted ? part.origin || "Minh chứng đối chiếu transcript" : "Nội dung gợi ý để đối chiếu, chưa tính đạt"}: “{teacherNarrative(part.evidence || part.hint)}”</p>}
+    </li>)}</ul>
+    {q?.evaluationNotice && <p className="text-xs text-amber-900">{teacherNarrative(q.evaluationNotice)}</p>}
+    <Language q={q} kind="grammar"/><Language q={q} kind="vocabulary"/>
+    <p className="text-xs leading-5 text-amber-900">Nhận xét ngôn ngữ dựa trên transcript đã lưu. Nếu bản nhận diện sai hoặc thiếu, giáo viên đối chiếu lời nói thực tế trước khi quy thành lỗi của sinh viên.</p>
+    <div><h5 className="font-bold text-blue-800">{row.full ? "Hướng phát triển" : "Hướng luyện tiếp"}</h5><p className="text-sm">{row.next}</p></div>
+    <details><summary className="cursor-pointer font-bold text-blue-800">Nguồn và phân tích tiêu chí gốc</summary>
+      <p className="mt-2 text-xs text-slate-600">{mode(q?.source ?? "unavailable")}. Khung bài học gộp theo 5/5/4; rubric gốc có tiêu chí con và tiêu chí mở rộng.</p>
+      {q?.criteria?.length ? <ul className="mt-2 space-y-2 text-sm">{q.criteria.map((c, i) => <li key={i}><strong>{teacherNarrative(c.label)}</strong>: {({ covered: "Đã thể hiện", partial: "Một phần", missing: "Chưa nhận diện" } as Record<string, string>)[c.status] ?? "Chưa đủ dữ liệu"}
+        {criterionEvidence(q, c.evidence) && <p className="text-xs text-slate-600">Trích dẫn/diễn giải đã lưu, cần đối chiếu: {teacherNarrative(criterionEvidence(q, c.evidence))}</p>}</li>)}</ul> : <p className="mt-2 text-sm">Chưa lưu tiêu chí chi tiết.</p>}
+    </details>
+    <details><summary className="cursor-pointer font-bold text-blue-800">Xem transcript</summary><p className="mt-2 whitespace-pre-wrap break-words text-sm">{q?.transcript || "Chưa lưu transcript."}</p></details>
+  </article>;
+}
+
+export default function TeacherLessonSynthesis({ sessionId, results, expected }: { sessionId: string; results: ClassroomCandidateResult[]; expected: number }) {
+  // No teacher grading input or browser storage. Old teacher notes are untouched.
+  const [selected, setSelected] = useState<{ sessionId: string; id: string } | null>(null);
+  const student = selected?.sessionId === sessionId ? results.find(r => r.id === selected.id) : undefined;
+  return <section className="space-y-4 rounded-3xl border border-blue-200 bg-slate-50 p-4 shadow-xl sm:p-6">
+    <header><p className="text-xs font-bold text-blue-700">FIX 43.3.12 · {results.length}/{expected} sinh viên có kết quả</p>
+      <h2 className="mt-1 text-2xl font-black text-blue-950">EVALUATION FORM (AI)</h2>
+      <p className="mt-2 text-sm text-slate-600">AI hỗ trợ phân tích câu trả lời. Giáo viên kết hợp quan sát và nhận xét của bạn đồng hành để đưa ra nhận xét cuối cùng.</p>
+    </header>
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1080px] table-fixed text-left text-sm">
+      <thead className="bg-blue-950 text-white"><tr><th scope="col" className="w-[14%] px-3 py-3">Sinh viên</th>{QUESTIONS.map((q, i) => <th key={q.title} scope="col" className="w-[12%] px-3 py-3">Q{i + 1}<span className="mt-1 block text-[11px] font-normal">{["Giới thiệu bản thân", "Điểm mạnh", "Lý do chọn công ty"][i]}</span></th>)}<th scope="col" className="w-[28%] px-3 py-3">Điểm đã làm được</th><th scope="col" className="w-[22%] px-3 py-3">Hướng luyện tiếp</th></tr></thead>
+      <tbody>{results.map(r => { const data = studentAttainment(r); const presentation = studentPresentation(r); return <tr key={r.id} className="border-t border-slate-200 align-top">
+        <th scope="row" className="px-3 py-3"><span className="text-base text-blue-950">{r.candidate_name}</span><p className="mt-1 text-xs font-normal text-slate-600">{data.completed ? "Đã hoàn thành 3 câu" : `${data.completedCount}/3 câu có bản ghi`}</p>
+          <button type="button" aria-expanded={student?.id === r.id} aria-controls="student-evaluation-details" onClick={() => setSelected(student?.id === r.id ? null : { sessionId, id: r.id })} className="mt-2 rounded-lg bg-blue-700 px-2 py-1.5 text-xs font-bold text-white">{student?.id === r.id ? "Đóng chi tiết" : "Xem chi tiết"}</button></th>
+        {presentation.rows.map((row, i) => <td key={i} className="px-2 py-3"><div className={`rounded-xl border p-2.5 text-xs font-semibold leading-5 ${row.onTopic ? "border-teal-200 bg-teal-50 text-teal-950" : "border-slate-200 bg-slate-50 text-slate-700"}`}>{row.label}</div></td>)}
+        <td className="px-3 py-3 text-xs leading-5 text-teal-900"><ul className="space-y-2">{presentation.rows.map((row, i) => <li key={i}><strong>Q{i + 1}:</strong> {row.strength}</li>)}</ul></td><td className="px-3 py-3 text-xs leading-5 text-blue-950">{presentation.next}</td>
+      </tr>; })}</tbody>
+    </table></div>
+    <details className="text-xs leading-5 text-slate-600"><summary className="cursor-pointer font-bold text-blue-900">Cách đọc bảng và tiêu chí chi tiết</summary>
+      <p className="mt-2">“Trả lời đúng trọng tâm” là nhận định hỗ trợ khi có minh chứng cho ý cốt lõi và phần nội dung tối thiểu. “Đã ghi nhận câu trả lời” chỉ xác nhận có transcript, không kết luận đúng hoặc sai. Hoàn thành nghĩa là có bản ghi trả lời ba câu, chưa tự chứng minh đạt nội dung. Từ 50% trở lên: Q1 ≥3/5 ý; Q2 ≥3/5 phần; Q3 ≥2/4 phần, có ý trọng tâm. Ngữ pháp, từ vựng và mức độ làm rõ xem trong chi tiết. Không xếp hạng sinh viên.</p>
+      <p className="mt-2">Minh chứng ngắn được đối chiếu cả câu và đúng tiêu chí; một từ đứng riêng không tự tính đạt. Chưa đủ minh chứng không tự đồng nghĩa sinh viên chưa nói ý đó. Ứng dụng không phục hồi phần lời nói chưa được ghi nhận.</p>
+    </details>
+    {student && <section id="student-evaluation-details" className={panel}>
+      <div className="flex items-center justify-between gap-3"><h3 className="text-xl font-black text-blue-950">Q1–Q3 · {student.candidate_name}</h3><button type="button" onClick={() => setSelected(null)} className="font-bold text-blue-700">Đóng</button></div>
+      <p className="mt-2 text-xs text-slate-600">Nguồn phân tích: {mode(student.evaluation_mode)}. Kết quả là dữ liệu hỗ trợ nhận xét, không thay kết luận của giáo viên.</p>
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">{questions(student).map((q, i) => <QuestionCard key={i} q={q} index={i}/>)}</div>
+    </section>}
   </section>;
 }

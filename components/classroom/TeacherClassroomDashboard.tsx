@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { ClassroomCandidateResult, ClassroomCloudSession } from "@/types/classroomResults";
 
+import { questionPresentation } from "@/services/lessonPresentation";
+
 import TeacherLessonSynthesis from "./TeacherLessonSynthesis";
 
 const TEACHER_SESSION_KEY = "english-ai-teacher-class-session";
@@ -17,15 +19,12 @@ type SessionResponse = {
 };
 
 function modeLabel(mode: ClassroomCandidateResult["evaluation_mode"]) {
-  if (mode === "live_ai") return "Live AI";
-  if (mode === "mixed") return "Mixed AI + Backup";
-  if (mode === "backup_rubric") return "Backup Rubric";
-  return "Unavailable";
+  if (mode === "live_ai") return "AI trực tiếp";
+  if (mode === "mixed") return "AI trực tiếp kết hợp tiêu chí dự phòng";
+  if (mode === "backup_rubric") return "Tiêu chí dự phòng";
+  return "Chưa có phân tích";
 }
 
-function scoreOrDash(value: number | null | undefined) {
-  return value == null ? "—" : value.toFixed(1);
-}
 
 export default function TeacherClassroomDashboard() {
   const [pin, setPin] = useState("");
@@ -182,7 +181,7 @@ export default function TeacherClassroomDashboard() {
   if (!pin) {
     return (
       <section className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.6 · Teacher access</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.12 · Teacher access</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Class Results Dashboard</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">Enter the teacher PIN configured on the server. Students never need this PIN.</p>
         <form onSubmit={login} className="mt-6 space-y-4">
@@ -196,7 +195,7 @@ export default function TeacherClassroomDashboard() {
   if (!session) {
     return (
       <section className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.6 · Teacher dashboard</p>
+        <p className="text-xs font-black uppercase tracking-[.18em] text-blue-700">FIX 43.3.12 · Teacher dashboard</p>
         <h1 className="mt-2 text-3xl font-black text-slate-950">Create the teaching-demo session</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">The session expects four candidates. Student results are saved locally first and then synchronized to Supabase.</p>
 <form onSubmit={event => { event.preventDefault(); if (reopenCode.trim()) void loadSession(reopenCode.trim()); }} className="mt-6 rounded-2xl border border-teal-200 bg-teal-50 p-4">
@@ -256,23 +255,23 @@ export default function TeacherClassroomDashboard() {
             <button type="button" onClick={() => void loadSession(session.session_code)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700">Refresh now</button>
           </div>
 
+          <p className="mt-3 text-xs text-slate-500">Trạng thái nội dung theo phân tích đã lưu; xem Tổng hợp kết quả để có minh chứng và hướng luyện tiếp.</p>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Candidate</th><th className="px-3 py-2">Q1</th><th className="px-3 py-2">Q2</th><th className="px-3 py-2">Q3</th><th className="px-3 py-2">Overall</th><th className="px-3 py-2">Evaluation</th><th className="px-3 py-2">Cloud</th></tr></thead>
+              <thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-3 py-2">Candidate</th><th className="px-3 py-2">Q1</th><th className="px-3 py-2">Q2</th><th className="px-3 py-2">Q3</th><th className="px-3 py-2">Nguồn phân tích</th><th className="px-3 py-2">Cloud</th></tr></thead>
               <tbody>
                 {results.map((result) => (
                   <tr key={result.id} className="bg-slate-50 text-slate-800">
                     <td className="rounded-l-xl px-3 py-3 font-black">{result.candidate_name}</td>
-                    <td className="px-3 py-3">{scoreOrDash(result.q1_result?.score)}/10</td>
-                    <td className="px-3 py-3">{scoreOrDash(result.q2_result?.score)}/10</td>
-                    <td className="px-3 py-3">{scoreOrDash(result.q3_result?.score)}/10</td>
-                    <td className="px-3 py-3 text-lg font-black text-blue-700">{Number(result.overall_score).toFixed(1)}</td>
-                    <td className="px-3 py-3">{modeLabel(result.evaluation_mode)}</td>
+                    <td className="px-3 py-3">{questionPresentation(result.q1_result, 0).label}</td>
+                    <td className="px-3 py-3">{questionPresentation(result.q2_result, 1).label}</td>
+                    <td className="px-3 py-3">{questionPresentation(result.q3_result, 2).label}</td>
+                    <td className="px-3 py-3"><details><summary className="cursor-pointer text-blue-700">Xem nguồn</summary>{modeLabel(result.evaluation_mode)}</details></td>
                     <td className="rounded-r-xl px-3 py-3 font-bold text-emerald-700">✓ Synced</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(expected - results.length, 0) }).map((_, index) => (
-                  <tr key={`waiting-${index}`} className="bg-slate-50 text-slate-400"><td className="rounded-l-xl px-3 py-3 font-semibold">Waiting for candidate...</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="rounded-r-xl px-3 py-3">Waiting</td></tr>
+                  <tr key={`waiting-${index}`} className="bg-slate-50 text-slate-400"><td className="rounded-l-xl px-3 py-3 font-semibold">Waiting for candidate...</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="px-3 py-3">—</td><td className="rounded-r-xl px-3 py-3">Waiting</td></tr>
                 ))}
               </tbody>
             </table>

@@ -1,0 +1,15 @@
+FIX 43.3.8 validation
+PASS: npx tsc --noEmit.
+PASS: npm run build (Next 16.2.10, 16 static pages).
+PASS: lesson-overview regression/static four-student rendering.
+PASS: FIX 43.3.7 state/portrait/teacher-practice regression.
+PASS: audio-visual mock lifecycle: stream publisher, isolated subscriber failures,
+      silence vs signal amplitude, cleanup without stopping recorder tracks,
+      playback/pause status, and optional analyser failure.
+Static React rendering outside Next reports a styled-jsx attribute warning;
+Next production build succeeds.
+NOT VERIFIED: real browser layout, actual microphone/audio devices/permissions,
+Web Speech and MediaRecorder E2E, iOS, Supabase live, Vercel deployment.
+IMPORTANT: no real-time microphone level in current Web Speech mode; static status only.
+PATCH includes 43.3.7 and 43.3.8; directly applicable on 43.3.6 or 43.3.7.
+ZIP CRC, content bytes and allowed source changes checked during packaging.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { setRecordingVisualStream } from "@/services/recordingVisualStream";
 import { useSpeechContext } from "@/context/SpeechContext";
 import {
   createSpeechRecognition,
@@ -108,6 +109,7 @@ export default function SpeechRecorder({
   }, []);
 
   const stopMediaStream = useCallback(() => {
+    setRecordingVisualStream(null);
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
   }, []);
@@ -427,6 +429,7 @@ export default function SpeechRecorder({
       };
 
       recorder.start(1000);
+      setRecordingVisualStream(stream);
       setStatus("recording");
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds((seconds) => {

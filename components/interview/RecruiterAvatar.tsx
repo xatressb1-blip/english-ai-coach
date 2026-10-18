@@ -5,7 +5,7 @@ import type { RecruiterProfile } from "@/data/recruiters";
 
 export type RecruiterAvatarState = "idle" | "listening" | "speaking";
 
-type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
+type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "stage";
 
 interface Props {
   recruiter: RecruiterProfile;
@@ -23,6 +23,7 @@ const sizeClasses: Record<AvatarSize, string> = {
   md: "h-16 w-16 sm:h-20 sm:w-20",
   lg: "h-20 w-20 sm:h-28 sm:w-28",
   xl: "h-24 w-24 sm:h-32 sm:w-32",
+  stage: "h-28 w-28 sm:h-40 sm:w-40 lg:h-44 lg:w-44",
 };
 
 const waveformHeights = [34, 62, 46, 82, 54, 92, 48, 76, 40, 68, 36];
@@ -55,7 +56,7 @@ export default function RecruiterAvatar({
           src={recruiter.portraits.idle}
           alt={alt}
           fill
-          sizes="(max-width: 640px) 96px, 128px"
+          sizes={size === "stage" ? "(max-width: 640px) 112px, (max-width: 1024px) 160px, 176px" : "(max-width: 640px) 96px, 128px"}
           className="object-cover object-center"
           priority={priority}
           unoptimized
