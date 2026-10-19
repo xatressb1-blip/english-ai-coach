@@ -1,0 +1,11 @@
+FIX 43.3.13 — Kết quả kiểm tra trong môi trường xây dựng
+PASS npx --no-install tsc --noEmit: dùng TypeScript đã cài của dự án.
+PASS npm run build: Next.js 16.2.10 Turbopack, 16/16 trang tĩnh.
+PASS eslint ba file logic/tổng hợp thay đổi: lessonAttainment.ts, lessonPresentation.ts và TeacherLessonSynthesis.tsx.
+ESLint Dashboard CHƯA PASS: react-hooks/set-state-in-effect tại setOrigin trong effect khởi tạo. Đã chạy trên bản gốc 43.3.12 và xác nhận cùng lỗi; bản này chỉ đổi nhãn phiên bản trong file Dashboard, không sửa effect đó. Không tuyên bố toàn bộ lint PASS.
+PASS fixture/static render: hồi quy bằng chứng của khung đầy đủ; một ý Q1/Q2/Q3; lỗi ngữ pháp nhỏ với nội dung một phần có minh chứng; ví dụ Q2 chưa đủ hành động và kỹ năng Q3 chưa đủ role-fit vẫn được ghi nhận bước đầu; từ khóa rời, phủ định, sai trích dẫn, trùng tiêu chí, unavailable và tiêu chí không thuộc câu bị loại; null/empty riêng; Live/Backup/Mixed minh bạch; bốn sinh viên với các trạng thái khác nhau; chi tiết và bảng chính thống nhất; không xếp loại/điểm trên bảng chính; không sửa result, không thêm Gemini/storage write.
+ZIP được kiểm tra CRC, đường dẫn và bộ file; PATCH trên FULL 43.3.12 tái tạo đúng FULL 43.3.13. Chỉ bốn file code thay đổi, kèm hai tài liệu mới.
+Không nâng package hoặc thay package-lock, schema, interview, recorder, Emma, API hoặc đồng bộ Supabase.
+CHƯA kiểm thử giao diện trên trình duyệt thật, micro/audio, Supabase thật hoặc deployment Vercel. Môi trường chưa có Chromium.
+CHƯA chẩn đoán trường hợp IELTS 8.5 vì chưa có transcript/tiêu chí gốc của lượt đó.
+Tài liệu PASS chỉ áp dụng cho kiểm tra đã nêu; cần chạy TypeScript/build và kiểm tra hành vi trên máy người dùng trước Internet.

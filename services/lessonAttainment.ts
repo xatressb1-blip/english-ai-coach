@@ -39,6 +39,28 @@ function supportedQuote(q: ClassroomQuestionResult, value: string, id: string) {
   const sentence = positive.find(sentence => contexts[id]?.test(sentence));
   return sentence ?? "";
 }
+// Activity 2's introductory practice target accepts one relevant evidenced idea.
+// Subcriteria can stand on their own here; they need not complete a 5/5/4 group.
+// This does not change the full-structure coverage calculation below.
+export function practiceEvidence(q: ClassroomQuestionResult | null, index: number) {
+  if (!usable(q) || !q?.transcript?.trim()) return [];
+  const labels: Record<string, string> = {
+    "personal-introduction": "Giới thiệu bản thân", education: "Trường/trình độ",
+    major: "Ngành học", "career-direction": "Mục tiêu nghề nghiệp", contribution: "Đóng góp",
+    "clear-strength": "Điểm mạnh", explanation: "Lý do", "specific-example": "Ví dụ cụ thể",
+    action: "Hành động trong ví dụ", result: "Kết quả", "job-connection": "Liên hệ công việc",
+    "company-research": "Tìm hiểu công ty", "company-attraction": "Điều hấp dẫn ở công ty",
+    "relevant-skills": "Kỹ năng của bản thân", "role-fit": "Liên hệ với vị trí",
+    "growth-alignment": "Hướng phát triển bản thân",
+  };
+  const ids = [...new Set((LESSON_PARTS[index] ?? []).flatMap(part => part.ids))];
+  return ids.flatMap(id => {
+    const matches = (q.criteria ?? []).filter(c => c.id === id);
+    if (matches.length !== 1 || !["covered", "partial"].includes(matches[0].status)) return [];
+    const evidence = supportedQuote(q, matches[0].evidence, id);
+    return evidence ? [{ id, label: labels[id], evidence, developed: matches[0].status === "covered" }] : [];
+  });
+}
 // Same Q1/Q2/Q3 lesson groups, not the detailed rubric's 6/7/7 counts.
 // A keyword cue alone is never sufficient for a counted part.
 export function questionAttainment(q: ClassroomQuestionResult | null, index: number) {

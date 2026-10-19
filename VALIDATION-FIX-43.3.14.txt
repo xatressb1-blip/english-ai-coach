@@ -1,0 +1,9 @@
+FIX 43.3.14 — Kiểm tra tại môi trường xây dựng
+PASS npx --no-install tsc --noEmit.
+PASS npm run build: Next.js 16.2.10 Turbopack, 16/16 trang tĩnh.
+PASS eslint lessonPresentation.ts và TeacherLessonSynthesis.tsx.
+PASS fixture/static render: hồi quy toàn bộ tiêu chí 43.3.13; câu nhận xét thay tên nhãn; covered + partial cùng hiển thị khi có chỗ, partial có Bước đầu; giới hạn hai ý; không tạo điểm mạnh cho dữ liệu không rõ; bốn sinh viên/ba câu; Chi tiết giữ minh chứng; không sửa result hoặc gọi thêm Gemini.
+Chỉ ba file code thay đổi; hai component chỉ cập nhật số phiên bản. Package/lock, lessonAttainment, recorder, interview, API và schema giữ nguyên.
+ZIP kiểm tra CRC và đường dẫn; PATCH trên FULL 43.3.13 tái tạo đúng FULL 43.3.14.
+CHƯA PASS toàn bộ lint: Dashboard có lỗi set-state-in-effect đã xác nhận có từ bản gốc 43.3.12/43.3.13. Bản này không sửa effect đó.
+CHƯA kiểm thử trình duyệt thật, micro, Supabase thật hoặc Vercel. Không tuyên bố sửa lỗi nhận dạng giọng nói.
