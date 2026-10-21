@@ -52,15 +52,23 @@ export default function TeacherLessonSynthesis({ sessionId, results, expected }:
   const [selected, setSelected] = useState<{ sessionId: string; id: string } | null>(null);
   const student = selected?.sessionId === sessionId ? results.find(r => r.id === selected.id) : undefined;
   return <section className="space-y-4 rounded-3xl border border-blue-200 bg-slate-50 p-4 shadow-xl sm:p-6">
-    <header><p className="text-xs font-bold text-blue-700">FIX 43.3.14 · {results.length}/{expected} sinh viên có kết quả</p>
+    <header><p className="text-xs font-bold text-blue-700">FIX 43.3.17 · {results.length}/{expected} sinh viên có kết quả</p>
       <h2 className="mt-1 text-2xl font-black text-blue-950">EVALUATION FORM (AI)</h2>
       <p className="mt-2 text-sm text-slate-600">Kết quả ghi nhận mức thực hành bước đầu. Giáo viên kết hợp phân tích của ứng dụng, quan sát thực tế và nhận xét của bạn đồng hành để nhận xét cuối cùng.</p>
     </header>
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white"><table className="w-full min-w-[1080px] table-fixed text-left text-sm">
       <thead className="bg-blue-950 text-white"><tr><th scope="col" className="w-[14%] px-3 py-3">Sinh viên</th>{QUESTIONS.map((q, i) => <th key={q.title} scope="col" className="w-[12%] px-3 py-3">Q{i + 1}<span className="mt-1 block text-[11px] font-normal">{["Giới thiệu bản thân", "Điểm mạnh", "Lý do chọn công ty"][i]}</span></th>)}<th scope="col" className="w-[28%] px-3 py-3">Điểm đã làm được</th><th scope="col" className="w-[22%] px-3 py-3">Hướng luyện tiếp</th></tr></thead>
       <tbody>{results.map(r => { const data = studentAttainment(r); const presentation = studentPresentation(r); return <tr key={r.id} className="border-t border-slate-200 align-top">
-        <th scope="row" className="px-3 py-3"><span className="text-base text-blue-950">{r.candidate_name}</span><p className="mt-1 text-xs font-normal text-slate-600">{data.completed ? "Đã hoàn thành 3 câu" : `${data.completedCount}/3 câu có bản ghi`}</p>
-          <button type="button" aria-expanded={student?.id === r.id} aria-controls="student-evaluation-details" onClick={() => setSelected(student?.id === r.id ? null : { sessionId, id: r.id })} className="mt-2 rounded-lg bg-blue-700 px-2 py-1.5 text-xs font-bold text-white">{student?.id === r.id ? "Đóng chi tiết" : "Xem chi tiết"}</button></th>
+        <th scope="row" className="px-3 py-3"><span className="text-base text-blue-950">{r.candidate_name}</span>
+          <button
+            type="button"
+            aria-expanded={student?.id === r.id}
+            aria-controls={student?.id === r.id ? "student-evaluation-details" : undefined}
+            aria-label={`${data.completed ? "Đã hoàn thành 3 câu" : `${data.completedCount}/3 câu có bản ghi`} — ${student?.id === r.id ? "Đóng" : "Xem"} chi tiết của ${r.candidate_name}`}
+            title={student?.id === r.id ? "Nhấn để đóng chi tiết" : "Nhấn để xem chi tiết"}
+            onClick={() => setSelected(student?.id === r.id ? null : { sessionId, id: r.id })}
+            className={`mt-1 block cursor-pointer rounded py-1 text-left text-xs font-normal underline decoration-dotted underline-offset-4 transition-colors hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${student?.id === r.id ? "text-blue-700" : "text-slate-600"}`}
+          >{data.completed ? "Đã hoàn thành 3 câu" : `${data.completedCount}/3 câu có bản ghi`}</button></th>
         {presentation.rows.map((row, i) => <td key={i} className="px-2 py-3"><div className={`rounded-xl border p-2.5 text-xs font-semibold leading-5 ${row.practiceMet ? "border-teal-200 bg-teal-50 text-teal-950" : "border-slate-200 bg-slate-50 text-slate-700"}`}>{row.label}</div></td>)}
         <td className="px-3 py-3 text-xs leading-5 text-teal-900"><ul className="space-y-2">{presentation.rows.map((row, i) => <li key={i}><strong>Q{i + 1}:</strong> {row.strength}</li>)}</ul></td><td className="px-3 py-3 text-xs leading-5 text-blue-950">{presentation.next}</td>
       </tr>; })}</tbody>

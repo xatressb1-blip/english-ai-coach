@@ -1,0 +1,11 @@
+FIX 43.3.17 — Validation tại môi trường xử lý source
+PASS: npx tsc --noEmit.
+PASS: npm run build, Next.js 16.2.10, 16/16 trang; không dùng .env.local của thầy.
+PASS: eslint services/lessonPresentation.ts và components/classroom/TeacherLessonSynthesis.tsx.
+Dashboard chỉ đổi nhãn phiên bản; lỗi lint react-hooks/set-state-in-effect có sẵn không nằm trong phạm vi sửa và không tuyên bố toàn bộ lint PASS.
+PASS: fixtures tổng hợp kiểm tra hướng Q3 kỹ năng/vị trí, đóng góp/phát triển, nghiên cứu công ty; Q2 vẫn giữ ưu tiên khi phù hợp; ví dụ/hành động; dữ liệu chưa rõ/không có; từ chối minh chứng phủ định, trùng, không khớp và nguồn unavailable.
+PASS: toàn bộ rows trả về của fixtures giống hệt FIX 43.3.16; không đổi nhãn đạt, điểm đã làm được, minh chứng hoặc chi tiết. Input không bị sửa; evaluation mode không làm thay đổi quy tắc chọn hướng luyện tập.
+PASS: kiểm tra source logic tổng hợp không có fetch/Gemini hay ghi localStorage/sessionStorage.
+PASS: ZIP kiểm tra CRC, không lặp đường dẫn, không chứa .env/node_modules/.next/.git; PATCH trên FULL 43.3.16 tái tạo đúng FULL 43.3.17 từng byte.
+Chưa kiểm thử trình duyệt tương tác, micro, đổi vai trực tiếp, Gemini/Supabase thật hay Vercel. Fixtures là dữ liệu giả lập, không phải JSON thực của sinh viên trong ảnh.
+Máy thầy vẫn cần chạy tsc/build và kiểm thử bằng Session thực trước khi cập nhật Internet.

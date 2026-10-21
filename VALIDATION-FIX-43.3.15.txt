@@ -1,0 +1,12 @@
+FIX 43.3.15 — Kiểm tra trong môi trường xây dựng
+PASS npx --no-install tsc --noEmit.
+PASS npm run build: Next.js 16.2.10 Turbopack, 16/16 trang tĩnh.
+PASS eslint Hero.tsx, Navbar.tsx, app/page.tsx, app/teacher/classroom/page.tsx và TeacherLessonSynthesis.tsx.
+PASS các kiểm tra hồi quy fixture/static render của tiêu chí thực hành và nhận xét 43.3.14.
+PASS production HTTP: /, /teacher/classroom, /interview và /interview?session=TEST-43315 đều trả 200; kiểm tra nhãn nút tự luyện, đường dẫn giáo viên, anchor learning-path, thanh điều hướng dùng chung, ô Teacher PIN và FIX 43.3.15.
+Chạy production trong môi trường này cần chỉ định hostname 127.0.0.1 do lỗi hệ thống khi liệt kê network interfaces. Đây là cách khởi động kiểm tra nội bộ, không đổi package hay lệnh start của dự án. Bản chạy kiểm tra không dùng .env.local hoặc key thật.
+ZIP kiểm tra CRC, đường dẫn và bộ file. PATCH áp dụng lên FULL 43.3.14 tái tạo đúng FULL 43.3.15.
+Sáu file code thay đổi; hai component lớp chỉ thay nhãn phiên bản. Interview, context, recorder, evaluator, APIs, Supabase, schema, package/lock không đổi.
+CHƯA kiểm thử tương tác trên trình duyệt thật, responsive bằng ảnh, microphone, đăng nhập bằng PIN thật, đổi vai và đồng bộ Supabase thực tế. HTTP render không chứng minh các hiệu ứng client đã hoạt động.
+CHƯA PASS toàn bộ lint: lỗi set-state-in-effect có sẵn trong TeacherClassroomDashboard từ 43.3.12 vẫn giữ nguyên; bản này chỉ đổi nhãn phiên bản của file đó.
+CHƯA deploy Vercel, chưa đổi tên miền và chưa kiểm tra khả dụng trolyaoai.vercel.app.

@@ -1,0 +1,11 @@
+FIX 43.3.16 — Kiểm tra tại môi trường xây dựng
+PASS npx --no-install tsc --noEmit.
+PASS npm run build: Next.js 16.2.10 Turbopack, 16/16 trang tĩnh.
+PASS eslint components/classroom/TeacherLessonSynthesis.tsx.
+Đối chiếu source: cùng handler setSelected và điều kiện chọn theo sessionId/id; thay nút xanh bằng dòng trạng thái dạng button. Nội dung kết quả, tiêu chí và dữ liệu không sửa.
+Chỉ hai file code thay đổi; TeacherClassroomDashboard chỉ thay nhãn phiên bản.
+ZIP kiểm tra CRC, đường dẫn và bộ file; PATCH trên FULL 43.3.15 tái tạo đúng FULL 43.3.16. Không kèm env, node_modules, .next hoặc .git.
+Không viết thêm test tự động cho thay đổi giao diện nhỏ này. Cần kiểm thử mở/đóng, chọn sinh viên, đổi phiên và bàn phím trên trình duyệt thật theo README.
+CHƯA kiểm thử trình duyệt thật, responsive bằng ảnh, micro hoặc Supabase thực tế.
+Không tuyên bố toàn bộ lint PASS: Dashboard có lỗi set-state-in-effect đã xác nhận có sẵn từ bản trước, phần effect đó không thay đổi.
+Chưa deploy Vercel hoặc đổi tên miền.

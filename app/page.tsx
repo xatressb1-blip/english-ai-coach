@@ -9,7 +9,7 @@ export default function Home() {
   const advanced = interviewQuestions.filter((question) => question.trainingLevel === "advanced");
 
   const renderLevel = (title: string, subtitle: string, items: typeof interviewQuestions, startNumber: number, accent: string) => (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section id={startNumber === 1 ? "learning-path" : undefined} className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:px-6 lg:px-8">
       <div className={`rounded-3xl border p-6 sm:p-8 ${accent}`}>
         <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div><p className="text-sm font-bold uppercase tracking-[.18em] text-slate-500">Learning Path</p><h2 className="mt-2 text-3xl font-bold text-slate-900">{title}</h2><p className="mt-2 max-w-3xl leading-7 text-slate-600">{subtitle}</p></div>
